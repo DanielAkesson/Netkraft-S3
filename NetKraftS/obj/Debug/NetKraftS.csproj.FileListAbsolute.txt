@@ -1,0 +1,7 @@
+C:\Users\Daniel Åkesson\source\repos\NetKraftStructEdition\NetKraftS\obj\Debug\NetKraftS.csprojAssemblyReference.cache
+C:\Users\Daniel Åkesson\source\repos\NetKraftStructEdition\NetKraftS\obj\Debug\NetKraftS.csproj.CoreCompileInputs.cache
+C:\Users\Daniel Åkesson\source\repos\NetKraftStructEdition\NetKraftS\bin\Debug\NetKraftS.exe.config
+C:\Users\Daniel Åkesson\source\repos\NetKraftStructEdition\NetKraftS\bin\Debug\NetKraftS.exe
+C:\Users\Daniel Åkesson\source\repos\NetKraftStructEdition\NetKraftS\bin\Debug\NetKraftS.pdb
+C:\Users\Daniel Åkesson\source\repos\NetKraftStructEdition\NetKraftS\obj\Debug\NetKraftS.exe
+C:\Users\Daniel Åkesson\source\repos\NetKraftStructEdition\NetKraftS\obj\Debug\NetKraftS.pdb
