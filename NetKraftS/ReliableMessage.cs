@@ -9,6 +9,7 @@ using NetkraftMessage;
 
 namespace NetkraftMessage
 {
+    //TODO: Remove this class
     /*
     class ReliableMessage
     {
