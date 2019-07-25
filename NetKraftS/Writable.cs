@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 
-namespace NetkraftMessage
+namespace Netkraft.Messaging
 {
     public static class WritableSystem
     {
@@ -133,11 +133,10 @@ namespace NetkraftMessage
             for (int i = 0; i < length; i++)
                 array[i] = (T)BinaryFunctions[typeof(T)].reader(stream);
             return array;
-        }
-
-        [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
-        public class SkipIndex : System.Attribute { }
+        }   
     }
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class SkipIndex : System.Attribute { }
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = true)]
     public class Writable : System.Attribute { }
 }

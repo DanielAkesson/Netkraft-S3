@@ -1,12 +1,9 @@
-﻿using System;
+﻿using Netkraft.Messaging;
+using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace NetkraftMessage
+namespace Netkraft
 {
     public class ClientConnection
     {

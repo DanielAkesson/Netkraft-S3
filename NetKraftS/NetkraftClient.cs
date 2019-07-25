@@ -3,12 +3,10 @@ using System.IO;
 using System.Threading;
 using System.Net;
 using System.Collections.Generic;
-using System.Diagnostics;
-using NetkraftMessage;
-using System.Linq;
 using System;
+using Netkraft.Messaging;
 
-namespace NetkraftMessage
+namespace Netkraft
 {
     public class NetkraftClient
     {
@@ -19,7 +17,6 @@ namespace NetkraftMessage
         private MemoryStream _instantMessageStream = new MemoryStream();
         //Receive vars
         private MemoryStream _receiveStream = new MemoryStream();
-        private int _totalReceviedMessageAmount = 0;
         private byte[] _buffer = new byte[65536]; //UDP messages can't exceed 65507 bytes so this should always be sufficient
         private EndPoint _sender = new IPEndPoint(IPAddress.Any, 0);
         //State vars

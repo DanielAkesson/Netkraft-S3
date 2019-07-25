@@ -1,15 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.IO;
-using System.Runtime.Serialization;
-using System.Net;
 using System.Reflection;
 
-namespace NetkraftMessage
+namespace Netkraft.Messaging
 {
     //MessageTypes
-    interface IUnreliableMessage
+    public interface IUnreliableMessage
     {
         /// <summary>
         /// This is a callback method for when a message is read from a NetkraftClient.
@@ -28,7 +25,7 @@ namespace NetkraftMessage
         /// </summary>
         void OnSend(ClientConnection Context);
     }
-    interface IUnreliableAcknowledgedMessage
+    public interface IUnreliableAcknowledgedMessage
     {
         /// <summary>
         /// This is a callback method for when a message is read from a NetkraftClient.
@@ -48,7 +45,7 @@ namespace NetkraftMessage
         void OnSend(ClientConnection Context);
         void OnAcknowledgment(ClientConnection Context);
     }
-    interface IReliableMessage
+    public interface IReliableMessage
     {
         /// <summary>
         /// This is a callback method for when a message is read from a NetkraftClient.
@@ -67,7 +64,7 @@ namespace NetkraftMessage
         /// </summary>
         void OnSend(ClientConnection Context);
     }
-    interface IReliableAcknowledgedMessage
+    public interface IReliableAcknowledgedMessage
     {
         /// <summary>
         /// This is a callback method for when a message is read from a NetkraftClient.
