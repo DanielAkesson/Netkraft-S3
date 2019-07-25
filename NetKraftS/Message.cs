@@ -6,25 +6,32 @@ using System.Reflection;
 namespace Netkraft.Messaging
 {
     //MessageTypes
+    /// <summary>
+    /// Any class or struct that inherits this Interface will automaticlly have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
+    /// <para>This message type is not guaranteed to be delivered to end-client</para>
+    /// </summary>
     public interface IUnreliableMessage
     {
         /// <summary>
-        /// This is a callback method for when a message is read from a NetkraftClient.
+        /// This is a callback method for when a message is read from a <see cref="NetkraftClient"/>.
         /// The object this method is called on will have the correct context and data.
-        /// <para></para>
-        /// This object is reused everytime a message of this class is received, meaning it's a volatile pointer and can not be stored.
-        /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
+        /// <para>This object is reused everytime a message of this class is received, meaning it's a volatile pointer and can not be stored.
+        /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made. </para>
         /// </summary>
         void OnReceive(ClientConnection Context);
         /// <summary>
-        /// This is a callback method for when a message is sent from a NetkraftClient.
+        /// This is a callback method for when a message is sent from a <see cref="NetkraftClient"/>.
         /// The object this method is called on will have the correct context and data.
-        /// <para></para>
-        /// This object is reused everytime a message of this class is sent, meaning it's a volatile pointer and can not be stored.
-        /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
+        /// <para>This object is reused everytime a message of this class is sent, meaning it's a volatile pointer and can not be stored.
+        /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.</para>
         /// </summary>
         void OnSend(ClientConnection Context);
     }
+    /// <summary>
+    /// Any class or struct that inherits this Interface will automaticlly have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
+    /// <para>This message type is not guaranteed to be delivered to end-client</para>
+    /// <para>This message is acknowledged and <see cref="OnAcknowledgment(ClientConnection)"/> will be called once the end-client has recvied the message.</para>
+    /// </summary>
     public interface IUnreliableAcknowledgedMessage
     {
         /// <summary>
@@ -45,6 +52,11 @@ namespace Netkraft.Messaging
         void OnSend(ClientConnection Context);
         void OnAcknowledgment(ClientConnection Context);
     }
+    /// <summary>
+    /// Any class or struct that inherits this Interface will automaticlly have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
+    /// <para>This message type is guaranteed to be delivered to end-client and will therefore be resent until acknowledgement is confirmed.</para>
+    /// <remarks>Note: This message is not slower then <see cref="IUnreliableMessage"/> however, it's resent multiple times and should be avoided if the amount of data sent is a concern</remarks>
+    /// </summary>
     public interface IReliableMessage
     {
         /// <summary>
@@ -64,6 +76,12 @@ namespace Netkraft.Messaging
         /// </summary>
         void OnSend(ClientConnection Context);
     }
+    /// <summary>
+    /// Any class or struct that inherits this Interface will automaticlly have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
+    /// <para>This message type is guaranteed to be delivered to end-client and will therefore be resent until acknowledgement is confirmed.</para>
+    /// <para>This message is acknowledged and <see cref="OnAcknowledgment(ClientConnection)"/> will be called once the end-client has recvied the message.</para>
+    /// <para>Note: This message is not slower then <see cref="IUnreliableAcknowledgedMessage"/> however, it's resent multiple times and should be avoided if the amount of data sent is a concern</para>
+    /// </summary>
     public interface IReliableAcknowledgedMessage
     {
         /// <summary>
@@ -125,7 +143,7 @@ namespace Netkraft.Messaging
         /// <summary>
         /// Read a message from a stream.
         /// An object of the read message type will be assigned and called OnReceive with the data retrived.
-        /// This message object is a volatile pointer and can not be stored withoutmaking a deep copy first. 
+        /// This message object is a volatile pointer and can not be stored without making a deep copy first. 
         /// </summary>
         /// <param name="stream">Stream to read message from</param>
         /// <param name="context">NetkraftClient this message was received at and the endPoint that sent it</param>

@@ -37,7 +37,7 @@ namespace TestApplication
         }
     }
 
-    [Writable]
+    [Obsolete]
     public struct Hello : IUnreliableMessage
     {
         public string HelloMessage;

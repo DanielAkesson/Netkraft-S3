@@ -68,7 +68,6 @@ namespace Netkraft.Messaging
             }
         }
         
-
         //Public methods
         public static object Write(Stream stream, object obj)
         {
@@ -135,8 +134,17 @@ namespace Netkraft.Messaging
             return array;
         }   
     }
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
-    public class SkipIndex : System.Attribute { }
+    /// <summary>
+    /// If added to a class or struct all public fields will be writable to a byte array by <see cref="WritableSystem"/>
+    /// </summary>
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = true)]
-    public class Writable : System.Attribute { }
+    public class Writable : Attribute { }
+
+    /// <summary>
+    /// If added above a field inside a <see cref="Writable"/> or <see cref="Message"/> Inteface said field will not be included when sent by <see cref="NetkraftClient"/> or writen to byte array by <see cref="WritableSystem"/>.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
+    public class SkipIndex : Attribute{}
+
+ 
 }
