@@ -55,7 +55,7 @@
     <Compile Include="NetkraftClient.cs" />
     <Compile Include="NetkraftPlayer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Writable.cs" />
+    <Compile Include="WritableSystem.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
