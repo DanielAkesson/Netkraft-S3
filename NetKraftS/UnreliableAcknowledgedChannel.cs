@@ -99,6 +99,32 @@ namespace Netkraft
             return _ackMask;
         }
 
+        public override void ReceiveTickRestrictive()
+        {
+            //TODO: make a permenant solution
+            lock (_receiveStream)
+            {
+                if (_messagesInReceiveStream == 0) return;
+                //Read
+                _receiveStream.Seek(0, SeekOrigin.Begin);
+                for (int i = 0; i < _messagesInReceiveStream; i++)
+                {
+                    IUnreliableAcknowledgedMessage message = (IUnreliableAcknowledgedMessage)Message.ReadMessage(_receiveStream, _connection);
+                    if (message is RequestJoin)
+                        message.OnReceive(_connection);
+                }
+                    
+                //Send reliable ack
+                lock (_AckMessagesToSend)
+                    foreach (UnreliableAcknowledgmentMessage RAM in _AckMessagesToSend)
+                        _connection.AddToQueue(RAM);
+                //Reset
+                _AckMessagesToSend.Clear();
+                _receiveStream.Seek(0, SeekOrigin.Begin);
+                _messagesInReceiveStream = 0;
+            }
+        }
+
         private struct UnreliableAcknowledgmentMessage : IUnreliableMessage
         {
             public uint Mask;

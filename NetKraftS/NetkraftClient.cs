@@ -12,6 +12,7 @@ namespace Netkraft
     {
         private Socket _socket;
         private List<ClientConnection> _clientConnections = new List<ClientConnection>();
+        private Dictionary<IPEndPoint, ClientConnection> _iPEndPointToUnhandeledConnections = null;
         private Dictionary<IPEndPoint, ClientConnection> _iPEndPointToClientConnection = new Dictionary<IPEndPoint, ClientConnection>();
 
         private MemoryStream _instantMessageStream = new MemoryStream();
@@ -24,6 +25,7 @@ namespace Netkraft
         public Dictionary<IPEndPoint, List<NetkraftPlayer>> PlayersForConnection { get; } = new Dictionary<IPEndPoint, List<NetkraftPlayer>>();
         public List<NetkraftPlayer> AllPlayers;
 
+        
         private Random rand = new Random();
         public int FakeLossProcent = 0;
 
@@ -39,8 +41,26 @@ namespace Netkraft
             while (true)
             {
                 int size = _socket.ReceiveFrom(_buffer, ref _sender);
-                if (!_iPEndPointToClientConnection.ContainsKey((IPEndPoint)_sender)) return;
-                _iPEndPointToClientConnection[(IPEndPoint)_sender].Recive(_buffer, size);
+                if (_iPEndPointToClientConnection.ContainsKey((IPEndPoint)_sender))
+                {
+                    _iPEndPointToClientConnection[(IPEndPoint)_sender].Recive(_buffer, size);
+                }
+                //Host handeling unhandeled connections
+                else if(_iPEndPointToUnhandeledConnections != null)
+                {
+                    if (_iPEndPointToUnhandeledConnections.ContainsKey((IPEndPoint)_sender))
+                    {
+                        _iPEndPointToUnhandeledConnections[(IPEndPoint)_sender].Recive(_buffer, size);
+                    }
+                    else
+                    {
+                        lock(_iPEndPointToUnhandeledConnections)
+                        {
+                            _iPEndPointToUnhandeledConnections.Add((IPEndPoint)_sender, new ClientConnection(this, (IPEndPoint)_sender));
+                            _iPEndPointToUnhandeledConnections[(IPEndPoint)_sender].Recive(_buffer, size);
+                        }
+                    }
+                }
             }
         }
         internal void SendStream(MemoryStream stream, int SizeOfStreamToSend, ClientConnection client)
@@ -69,6 +89,15 @@ namespace Netkraft
             foreach (ClientConnection CC in _clientConnections)
                 CC.SendQueue();
         }
+        public void Host()
+        {
+            _iPEndPointToUnhandeledConnections = new Dictionary<IPEndPoint, ClientConnection>();
+        }
+        public void Join(string ip, int port)
+        {
+            AddEndPoint(ip, port);
+            SendImmediately(new RequestJoin {MacAddress = "00000000"});
+        }
 
         public void AddEndPoint(IPEndPoint ipEndPoint)
         {
@@ -84,29 +113,46 @@ namespace Netkraft
         }
         public void ReceiveTick()
         {
-            foreach (ClientConnection CC in _clientConnections)
-                CC.ReceiveTick();
+            for(int i=0;i< _clientConnections.Count; i++)
+                _clientConnections[i].ReceiveTick();
+
+            //Unhandeld
+            if (_iPEndPointToUnhandeledConnections == null) return;
+            lock (_iPEndPointToUnhandeledConnections)
+            {
+                foreach (ClientConnection CC in _iPEndPointToUnhandeledConnections.Values)
+                    CC.ReceiveTickRestrictive();
+            }
         }
     }
     
     class RequestJoin : IUnreliableMessage
     {
-        public string LocalIp;
         public string MacAddress;
-
-        public void OnAcknowledgment(ClientConnection Context)
-        {
-            throw new NotImplementedException();
-        }
 
         public void OnReceive(ClientConnection Context)
         {
-            throw new NotImplementedException();
+            Console.WriteLine("Join Request from: " + Context.IpEndPoint.Address);
+            Context.MasterClient.AddEndPoint(Context.IpEndPoint);
+            Context.SendImmediately(new RequestJoinResponse {Allowed = true, Reason = "Success" });
         }
 
         public void OnSend(ClientConnection Context)
         {
-            throw new NotImplementedException();
+        }
+    }
+    class RequestJoinResponse : IUnreliableMessage
+    {
+        public bool Allowed;
+        public string Reason;
+
+        public void OnReceive(ClientConnection Context)
+        {
+            Console.WriteLine("Join response: " + Reason);
+        }
+
+        public void OnSend(ClientConnection Context)
+        {
         }
     }
 }

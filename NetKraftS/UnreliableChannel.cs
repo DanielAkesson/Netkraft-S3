@@ -71,5 +71,25 @@ namespace Netkraft
                 _messagesInReceiveStream = 0;
             }
         }
+
+        public override void ReceiveTickRestrictive()
+        {
+            //TODO: make a permenant solution
+            lock (_receiveStream)
+            {
+                if (_messagesInReceiveStream == 0) return;
+                //Read
+                _receiveStream.Seek(0, SeekOrigin.Begin);
+                for (int i = 0; i < _messagesInReceiveStream; i++)
+                {
+                    IUnreliableMessage message = (IUnreliableMessage)Message.ReadMessage(_receiveStream, _connection);
+                    if (message is RequestJoin)
+                        message.OnReceive(_connection);
+                }  
+                //Reset
+                _receiveStream.Seek(0, SeekOrigin.Begin);
+                _messagesInReceiveStream = 0;
+            }
+        }
     }
 }

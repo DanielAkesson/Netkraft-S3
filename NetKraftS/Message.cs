@@ -133,7 +133,6 @@ namespace Netkraft.Messaging
             }
             foreach (Type t in messages)
             {
-                Console.WriteLine("Inizialized: " + t.Name);
                 ushort id = (ushort)_typeToMessageID.Keys.Count;
                 _typeToMessageID.Add(t, id);
                 _IDToMessageType.Add(id, t);

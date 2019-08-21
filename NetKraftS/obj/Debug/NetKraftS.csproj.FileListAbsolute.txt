@@ -8,3 +8,7 @@ C:\Users\Daniel Åkesson\source\repos\NetKraftStructEdition\NetKraftS\obj\Debug\
 C:\Users\Daniel Åkesson\source\repos\Netkraft-S3\NetKraftS\obj\Debug\NetKraftS.csprojAssemblyReference.cache
 C:\Users\Daniel Åkesson\source\repos\Netkraft-S3\NetKraftS\obj\Debug\NetKraftS.csproj.CoreCompileInputs.cache
 C:\Users\Daniel Åkesson\source\repos\Netkraft-S3\NetKraftS\obj\Debug\NetKraftS.pdb
+C:\Users\Daniel Åkesson\source\repos\Netkraft-S3\NetKraftS\bin\Debug\NetKraftS.dll.config
+C:\Users\Daniel Åkesson\source\repos\Netkraft-S3\NetKraftS\bin\Debug\NetKraftS.dll
+C:\Users\Daniel Åkesson\source\repos\Netkraft-S3\NetKraftS\bin\Debug\NetKraftS.pdb
+C:\Users\Daniel Åkesson\source\repos\Netkraft-S3\NetKraftS\obj\Debug\NetKraftS.dll

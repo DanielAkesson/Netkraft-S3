@@ -5,6 +5,7 @@ using System.IO;
 
 namespace Netkraft
 {
+    //Supports both Reliable messages and reliable Ackwnoalged messages!
     class ReliableChannel : Channel
     {
         private MemoryStream _queueMessageStream = new MemoryStream();
@@ -12,7 +13,7 @@ namespace Netkraft
         private int _messagesInReceiveStream = 0;
         private List<object>[] _messageQueues = new List<object>[32];
         private int[] _messageQueuesIds = new int[32];
-        private List<ReliableAcknowledgmentMessage> _reliableMessagesToSend = new List<ReliableAcknowledgmentMessage>();
+        private List<AcknowledgmentMessage> _reliableMessagesToSend = new List<AcknowledgmentMessage>();
 
         private byte _currentAcknowledgeID = 0;
         private byte _largestRecivedAcknowledgeID;
@@ -63,7 +64,11 @@ namespace Netkraft
             foreach (object o in _messageQueues[id])
             {
                 Message.WriteMessage(_queueMessageStream, o);
-                ((IReliableMessage)o).OnSend(_connection);
+
+                if (o is IReliableMessage)
+                    ((IReliableMessage)o).OnSend(_connection);
+                else if (o is IReliableAcknowledgedMessage)
+                    ((IReliableAcknowledgedMessage)o).OnSend(_connection);
             }
             //Sending message
             _masterClient.SendStream(_queueMessageStream, (int)_queueMessageStream.Position, _connection);
@@ -80,7 +85,7 @@ namespace Netkraft
                 _messagesInReceiveStream += BitConverter.ToUInt16(buffer, 2);//Amount of messages encoded
                 _receiveStream.Write(buffer, 4, size - 4); //4 because of header (byte + byte + ushort)
                 lock(_reliableMessagesToSend)
-                    _reliableMessagesToSend.Add(new ReliableAcknowledgmentMessage{ Mask = mask, Id = id });
+                    _reliableMessagesToSend.Add(new AcknowledgmentMessage{ Mask = mask, Id = id });
             }
         }
         //Called on main thread.
@@ -93,10 +98,17 @@ namespace Netkraft
                 //Read
                 _receiveStream.Seek(0, SeekOrigin.Begin);
                 for (int i = 0; i < _messagesInReceiveStream; i++)
-                    ((IReliableMessage)Message.ReadMessage(_receiveStream, _connection)).OnReceive(_connection);
+                {
+                    object mess = Message.ReadMessage(_receiveStream, _connection);
+                    if (mess is IReliableMessage)
+                        ((IReliableMessage)mess).OnReceive(_connection);
+                    else if(mess is IReliableAcknowledgedMessage)
+                        ((IReliableAcknowledgedMessage)mess).OnReceive(_connection);
+                }
+                    
                 //Send reliable ack
                 lock (_reliableMessagesToSend)
-                    foreach (ReliableAcknowledgmentMessage RAM in _reliableMessagesToSend)
+                    foreach (AcknowledgmentMessage RAM in _reliableMessagesToSend)
                         _connection.AddToQueue(RAM);
                 //Reset
                 _reliableMessagesToSend.Clear();
@@ -125,7 +137,38 @@ namespace Netkraft
             return _ackMask;
         }
 
-        private struct ReliableAcknowledgmentMessage : IUnreliableMessage
+        public override void ReceiveTickRestrictive()
+        {
+            //TODO: make a permenant solution
+            lock (_receiveStream)
+            {
+                if (_messagesInReceiveStream == 0) return;
+                //Read
+                _receiveStream.Seek(0, SeekOrigin.Begin);
+                for (int i = 0; i < _messagesInReceiveStream; i++)
+                {
+                    object mess = Message.ReadMessage(_receiveStream, _connection);
+                    if (mess is RequestJoin)
+                    {
+                        if (mess is IReliableMessage)
+                            ((IReliableMessage)mess).OnReceive(_connection);
+                        else if (mess is IReliableAcknowledgedMessage)
+                            ((IReliableAcknowledgedMessage)mess).OnReceive(_connection);
+                    }
+                }
+
+                //Send reliable ack
+                lock (_reliableMessagesToSend)
+                    foreach (AcknowledgmentMessage RAM in _reliableMessagesToSend)
+                        _connection.AddToQueue(RAM);
+                //Reset
+                _reliableMessagesToSend.Clear();
+                _receiveStream.Seek(0, SeekOrigin.Begin);
+                _messagesInReceiveStream = 0;
+            }
+        }
+
+        private struct AcknowledgmentMessage : IUnreliableMessage
         {
             public uint Mask;
             public byte Id;
@@ -141,7 +184,12 @@ namespace Netkraft
                     MaskMessage += ((Mask >> i) & 1) + " ";
                     if (((Mask >> i) & 1) == 1)
                     {
-                        //con._sentMessageQueues[messageID % 32].ForEach(x => ((IReliableMessage)x).OnAcknowledgment(Context));
+                        //Acknowlage if message is acknowlageable
+                        con._messageQueues[messageID % 32].ForEach(x =>
+                        {
+                            if (x is IReliableAcknowledgedMessage)
+                                ((IReliableAcknowledgedMessage)x).OnAcknowledgment(Context);
+                        });
                         con._messageQueuesIds[messageID % 32] = -1;
                         con._messageQueues[messageID % 32].Clear();
                     }    

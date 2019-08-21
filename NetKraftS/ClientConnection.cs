@@ -21,6 +21,7 @@ namespace Netkraft
             AddChannel(new UnreliableChannel(masterClient, this), typeof(IUnreliableMessage));
             AddChannel(new UnreliableAcknowledgedChannel(masterClient, this), typeof(IUnreliableAcknowledgedMessage));
             AddChannel(new ReliableChannel(masterClient, this), typeof(IReliableMessage));
+            AddChannel(new ReliableChannel(masterClient, this), typeof(IReliableAcknowledgedMessage));
         }
         private void AddChannel(Channel channel, Type channelType)
         {
@@ -52,6 +53,11 @@ namespace Netkraft
             foreach (Channel c in _channels)
                 c.ReceiveTick();
         }
+        internal void ReceiveTickRestrictive()
+        {
+            foreach (Channel c in _channels)
+                c.ReceiveTickRestrictive();
+        }
         internal Channel GetChannelOfType(Type channelType)
         {
             return _typeToChannel[channelType];
@@ -67,5 +73,6 @@ namespace Netkraft
         public abstract void SendQueue();
         public abstract void Recive(byte[] buffer, int size);
         public abstract void ReceiveTick();
+        public abstract void ReceiveTickRestrictive();
     }
 }

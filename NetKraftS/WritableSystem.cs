@@ -11,10 +11,29 @@ namespace Netkraft.Messaging
     {
         static WritableSystem()
         {
-            ByteConverter.AddBasicTypes();
-            //Get all Writables and Im´Message types in the current Domain
-            List<Type> WritableTypes = new List<Type>();
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+            //Add all writable filed types
+            foreach (Assembly A in assemblies)
+            {
+                MethodInfo[] WriteMethods = A.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)).Where(m => m.GetCustomAttributes(typeof(WritableFieldTypeWrite), false).Length > 0).ToArray();
+                MethodInfo[] ReadMethods = A.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)).Where(m => m.GetCustomAttributes(typeof(WritableFieldTypeRead), false).Length > 0).ToArray();
+
+                //Add types
+                foreach(MethodInfo wm in WriteMethods)
+                {
+                    Type wt = ((WritableFieldTypeWrite)wm.GetCustomAttribute(typeof(WritableFieldTypeWrite), false)).type;
+                    foreach (MethodInfo rm in ReadMethods)
+                    {
+                        Type rt = ((WritableFieldTypeRead)rm.GetCustomAttribute(typeof(WritableFieldTypeRead), false)).type;
+                        if (rt == wt)
+                            AddSuportedType(rt, (Action<Stream, object>)wm.CreateDelegate(typeof(Action<Stream, object>)), (Func<Stream, object>)rm.CreateDelegate(typeof(Func<Stream, object>)));
+                    }
+                }
+            }
+
+            //Get all Writables and IMessage types in the current Domain
+            List<Type> WritableTypes = new List<Type>();
             foreach (Assembly A in assemblies)
                 WritableTypes.AddRange(A.GetTypes().Where(x => TypeIsWritable(x)));
 
@@ -52,6 +71,7 @@ namespace Netkraft.Messaging
         }
         public static void AddSuportedType(Type type, Action<Stream, object> writerFunction, Func<Stream, object> readerFunction)
         {
+            Console.WriteLine("Add supported type: " + type.Name);
             //Normal type support
             BinaryFunctions.Add(type, (writerFunction, readerFunction));
             //X dimension array support
@@ -146,5 +166,23 @@ namespace Netkraft.Messaging
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
     public class SkipIndex : Attribute{}
 
- 
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public class WritableFieldTypeWrite : Attribute
+    {
+        public Type type;
+        public WritableFieldTypeWrite(Type type)
+        {
+            this.type = type;
+        }
+    }
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public class WritableFieldTypeRead : Attribute
+    {
+        public Type type;
+        public WritableFieldTypeRead(Type type)
+        {
+            this.type = type;
+        }
+    }
+
 }

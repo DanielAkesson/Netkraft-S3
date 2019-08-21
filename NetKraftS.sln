@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetKraftS", "NetKraftS\NetK
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestApplication", "TestApplication\TestApplication.csproj", "{5893D146-EE47-47EB-87E6-EB088EA43BE9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NetKraftTest", "NetKraftTest\NetKraftTest.csproj", "{579546CC-44E8-4E6F-9825-B98071425793}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{5893D146-EE47-47EB-87E6-EB088EA43BE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5893D146-EE47-47EB-87E6-EB088EA43BE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5893D146-EE47-47EB-87E6-EB088EA43BE9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{579546CC-44E8-4E6F-9825-B98071425793}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{579546CC-44E8-4E6F-9825-B98071425793}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{579546CC-44E8-4E6F-9825-B98071425793}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{579546CC-44E8-4E6F-9825-B98071425793}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
