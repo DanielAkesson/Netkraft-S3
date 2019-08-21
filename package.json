@@ -1,0 +1,11 @@
+{
+    "name": "com.kodkraft.netkraft",
+    "displayName": "Netkraft",
+    "version": "1.0.0",
+    "unity": "2019.2",
+    "description": "Network by kodkraft",
+    "keywords": ["Kodkraft", "Networkning"],
+    "category": "Network",
+    "dependencies": {
+    }
+}
