@@ -25,7 +25,10 @@ namespace Netkraft
         public Dictionary<IPEndPoint, List<NetkraftPlayer>> PlayersForConnection { get; } = new Dictionary<IPEndPoint, List<NetkraftPlayer>>();
         public List<NetkraftPlayer> AllPlayers;
 
-        
+        public Action<RequestJoinResponse> JoinResponseCallback;
+        public Action<RequestJoin> ClientJoinCallback;
+
+
         private Random rand = new Random();
         public int FakeLossProcent = 0;
 
@@ -125,8 +128,8 @@ namespace Netkraft
             }
         }
     }
-    
-    class RequestJoin : IUnreliableMessage
+
+    public class RequestJoin : IUnreliableMessage
     {
         public string MacAddress;
 
@@ -135,13 +138,14 @@ namespace Netkraft
             Console.WriteLine("Join Request from: " + Context.IpEndPoint.Address);
             Context.MasterClient.AddEndPoint(Context.IpEndPoint);
             Context.SendImmediately(new RequestJoinResponse {Allowed = true, Reason = "Success" });
+            Context.MasterClient.ClientJoinCallback?.Invoke(this);
         }
 
         public void OnSend(ClientConnection Context)
         {
         }
     }
-    class RequestJoinResponse : IUnreliableMessage
+    public class RequestJoinResponse : IUnreliableMessage
     {
         public bool Allowed;
         public string Reason;
@@ -149,6 +153,7 @@ namespace Netkraft
         public void OnReceive(ClientConnection Context)
         {
             Console.WriteLine("Join response: " + Reason);
+            Context.MasterClient.JoinResponseCallback?.Invoke(this);
         }
 
         public void OnSend(ClientConnection Context)

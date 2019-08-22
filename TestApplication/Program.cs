@@ -13,16 +13,32 @@ namespace TestApplication
     {
         static void Main(string[] args)
         {
-            TestJoinHost();
+            TestHost();
         }
+        static void TestHost()
+        {
+            NetkraftClient client1 = new NetkraftClient(1800);
+            NetkraftClient client = new NetkraftClient(2001);
+            client.Host();
+            client1.Join("10.0.0.9", 2001);
 
+            while (true)
+            {
+                client1.SendQueue();
+                client1.ReceiveTick();
+
+                client.SendQueue();
+                client.ReceiveTick();
+                Thread.Sleep(100);
+            }
+        }
         static void TestJoinHost()
         {
             NetkraftClient client1 = new NetkraftClient(2000);
             NetkraftClient client2 = new NetkraftClient(3000);
 
             client1.Host();
-            client2.Join("127.0.0.1", 2000);
+            client2.Join("10.0.0.9", 2000);
 
             while (true)
             {
