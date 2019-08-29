@@ -26,7 +26,7 @@ namespace Netkraft
         public List<NetkraftPlayer> AllPlayers;
 
         public Action<RequestJoinResponse> JoinResponseCallback;
-        public Action<RequestJoin> ClientJoinCallback;
+        public Action<RequestJoin, ClientConnection> ClientJoinCallback;
 
 
         private Random rand = new Random();
@@ -127,6 +127,7 @@ namespace Netkraft
                     CC.ReceiveTickRestrictive();
             }
         }
+        public ClientConnection GetClientConnection(IPEndPoint ipEndPoint) => _iPEndPointToClientConnection[ipEndPoint];
     }
 
     public class RequestJoin : IUnreliableMessage
@@ -138,7 +139,7 @@ namespace Netkraft
             Console.WriteLine("Join Request from: " + Context.IpEndPoint.Address);
             Context.MasterClient.AddEndPoint(Context.IpEndPoint);
             Context.SendImmediately(new RequestJoinResponse {Allowed = true, Reason = "Success" });
-            Context.MasterClient.ClientJoinCallback?.Invoke(this);
+            Context.MasterClient.ClientJoinCallback?.Invoke(this, Context.MasterClient.GetClientConnection(Context.IpEndPoint));
         }
 
         public void OnSend(ClientConnection Context)
