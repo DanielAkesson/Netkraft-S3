@@ -144,7 +144,6 @@ namespace Netkraft
                         con._messageQueues[messageID % 32].ForEach(x => ((IUnreliableAcknowledgedMessage)x).OnAcknowledgment(Context));
                         con._messageQueues[messageID % 32].Clear();
                     }
-                        
                 }
                 Console.WriteLine(MaskMessage + "For id: " + Id);
             }

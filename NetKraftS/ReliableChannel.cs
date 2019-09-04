@@ -14,10 +14,12 @@ namespace Netkraft
         private List<object>[] _messageQueues = new List<object>[32];
         private int[] _messageQueuesIds = new int[32];
         private List<AcknowledgmentMessage> _reliableMessagesToSend = new List<AcknowledgmentMessage>();
+        private bool[] _hasBeenAcknowledged = new bool[256];
 
         private byte _currentAcknowledgeID = 0;
         private byte _largestRecivedAcknowledgeID;
         private uint _ackMask;
+        private bool _messageHasBeenAdded = false;
         public ReliableChannel(NetkraftClient masterClient, ClientConnection connection)
         {
             _masterClient = masterClient;
@@ -32,6 +34,8 @@ namespace Netkraft
         public override void AddToQueue(object message)
         {
             _messageQueues[_currentAcknowledgeID % 32].Add(message);
+            _messageHasBeenAdded = true;
+            _hasBeenAcknowledged[_currentAcknowledgeID % 256] = false;
         }
         public override void SendImmediately(object message)
         {
@@ -47,14 +51,18 @@ namespace Netkraft
             _messageQueuesIds[_currentAcknowledgeID % 32] = _currentAcknowledgeID;
             SendQueueSpecific(_currentAcknowledgeID % 32);
             //Reseting
-            _currentAcknowledgeID++;
-            _messageQueues[_currentAcknowledgeID % 32].Clear();
-            _messageQueuesIds[_currentAcknowledgeID % 32] = -1;
+            if (_messageHasBeenAdded)
+            {
+                _currentAcknowledgeID++;
+                _messageQueues[_currentAcknowledgeID % 32].Clear();
+                _messageQueuesIds[_currentAcknowledgeID % 32] = -1;
+            }
+            _messageHasBeenAdded = false;
         }
         private void SendQueueSpecific(int id)
         {
-            if (_messageQueues[id].Count == 0 || _messageQueuesIds[id] == -1) return;
-            Console.WriteLine("Resending: " + _messageQueuesIds[id]);
+            if (_messageQueues[id].Count == 0 || _messageQueuesIds[id] < 0) return;
+            //Console.WriteLine("Resending: " + _messageQueuesIds[id]);
             _queueMessageStream.Seek(0, SeekOrigin.Begin);
             //Writing header
             ByteConverter.WriteByte(_queueMessageStream, (byte)2);//Channel type
@@ -161,13 +169,13 @@ namespace Netkraft
                 lock (_reliableMessagesToSend)
                     foreach (AcknowledgmentMessage RAM in _reliableMessagesToSend)
                         _connection.AddToQueue(RAM);
+
                 //Reset
                 _reliableMessagesToSend.Clear();
                 _receiveStream.Seek(0, SeekOrigin.Begin);
                 _messagesInReceiveStream = 0;
             }
         }
-
         private struct AcknowledgmentMessage : IUnreliableMessage
         {
             public uint Mask;
@@ -175,7 +183,7 @@ namespace Netkraft
 
             public void OnReceive(ClientConnection Context)
             {
-                ReliableChannel con = (ReliableChannel)Context.GetChannelOfType(typeof(IReliableMessage));
+                ReliableChannel con = (ReliableChannel)Context.GetChannelOfType(typeof(IReliableAcknowledgedMessage));
                 string MaskMessage = "Received acknowledgment for: ";
                 for (int i = 0; i < 32; i++)
                 {
@@ -184,15 +192,18 @@ namespace Netkraft
                     MaskMessage += ((Mask >> i) & 1) + " ";
                     if (((Mask >> i) & 1) == 1)
                     {
+                        if (con._hasBeenAcknowledged[messageID])
+                            continue;
                         //Acknowlage if message is acknowlageable
                         con._messageQueues[messageID % 32].ForEach(x =>
                         {
                             if (x is IReliableAcknowledgedMessage)
                                 ((IReliableAcknowledgedMessage)x).OnAcknowledgment(Context);
                         });
+                        con._hasBeenAcknowledged[messageID] = true;
                         con._messageQueuesIds[messageID % 32] = -1;
                         con._messageQueues[messageID % 32].Clear();
-                    }    
+                    }         
                 }
                 Console.WriteLine(MaskMessage + "For id: " + Id);
             }

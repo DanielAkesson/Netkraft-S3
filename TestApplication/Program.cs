@@ -11,42 +11,42 @@ namespace TestApplication
 {
     class Program
     {
+
+        public static int Sent = 0;
+        public static int Acked = 0;
+        public static int Recived = 0;
         static void Main(string[] args)
         {
-            TestHost();
+            TestJoinHost();
         }
-        static void TestHost()
-        {
-            NetkraftClient client1 = new NetkraftClient(1800);
-            NetkraftClient client = new NetkraftClient(2001);
-            client.Host();
-            client1.Join("10.0.0.9", 2001);
 
-            while (true)
-            {
-                client1.SendQueue();
-                client1.ReceiveTick();
-
-                client.SendQueue();
-                client.ReceiveTick();
-                Thread.Sleep(100);
-            }
-        }
         static void TestJoinHost()
         {
-            NetkraftClient client1 = new NetkraftClient(2000);
+            NetkraftClient client1 = new NetkraftClient(2001);
             NetkraftClient client2 = new NetkraftClient(3000);
 
             client1.Host();
-            client2.Join("10.0.0.9", 2000);
-
+            client2.Join("127.0.0.1", 2001);
+            client2.FakeLossProcent = 50;
+            client1.FakeLossProcent = 50;
             while (true)
             {
+                //Send message to host
+                if(new Random().NextDouble() > 0.5)
+                {
+                    client2.AddToQueue(new SimpleHello { HelloMessage = "Tjabba" });
+                    Sent++;
+                }
                 client1.SendQueue();
                 client2.SendQueue();
                 client1.ReceiveTick();
                 client2.ReceiveTick();
-                Thread.Sleep(100);
+                Thread.Sleep(10);
+                Console.ForegroundColor = Sent - Recived == 0 ? ConsoleColor.Green : ConsoleColor.Red;
+                Console.WriteLine("Recive Fail: " + (Sent - Recived));
+                Console.ForegroundColor = Sent - Acked == 0 ? ConsoleColor.Green : ConsoleColor.Red;
+                Console.WriteLine("Acked Fail: " + (Sent - Acked));
+                Console.ForegroundColor = ConsoleColor.White;
             }
         }
         static void TestMessage()
@@ -106,6 +106,23 @@ namespace TestApplication
         }
 
         public void OnSend(ClientConnection Context){}
+    }
+
+    public struct SimpleHello : IReliableAcknowledgedMessage
+    {
+        public string HelloMessage;
+
+        public void OnAcknowledgment(ClientConnection Context)
+        {
+            Program.Acked++;
+        }
+
+        public void OnReceive(ClientConnection Context)
+        {
+            Program.Recived++;
+        }
+
+        public void OnSend(ClientConnection Context) { }
     }
 
     [Writable]

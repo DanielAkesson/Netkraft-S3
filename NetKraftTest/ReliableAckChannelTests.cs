@@ -21,13 +21,22 @@ namespace NetKraftTest
             // Arrange
             NetkraftClient client1 = new NetkraftClient(2000);
             NetkraftClient client2 = new NetkraftClient(3000);
-            client1.AddEndPoint(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3000));
-            client2.AddEndPoint(new IPEndPoint(IPAddress.Parse("127.0.0.1"), 2000));
-            client1.FakeLossProcent = 40;
+            client1.Host();
+            client2.Join("127.0.0.1", 2000);
+            client1.FakeLossProcent = 50;
+            client2.FakeLossProcent = 50;
+            for (int i = 0; i < 10; i++)
+            {
+                client1.SendQueue();
+                client2.SendQueue();
+                client1.ReceiveTick();
+                client2.ReceiveTick();
+                Thread.Sleep(1);
+            }
             // Act
             for (int i = 0; i < 1000; i++)
             {
-                client1.AddToQueue(new TestMessage {index = i});
+                client2.AddToQueue(new TestMessage {index = i});
                 _messageSent.Add(i, true);
                 client1.SendQueue();
                 client2.SendQueue();
@@ -39,6 +48,8 @@ namespace NetKraftTest
             //Allow catchup
             for(int i= 0;i<1000;i++)
             {
+                client1.SendQueue();
+                client2.SendQueue();
                 client1.ReceiveTick();
                 client2.ReceiveTick();
                 Thread.Sleep(10);

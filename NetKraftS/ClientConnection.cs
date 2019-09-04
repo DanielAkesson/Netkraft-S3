@@ -20,8 +20,9 @@ namespace Netkraft
             IpEndPoint = ipEndPoint;
             AddChannel(new UnreliableChannel(masterClient, this), typeof(IUnreliableMessage));
             AddChannel(new UnreliableAcknowledgedChannel(masterClient, this), typeof(IUnreliableAcknowledgedMessage));
-            AddChannel(new ReliableChannel(masterClient, this), typeof(IReliableMessage));
-            AddChannel(new ReliableChannel(masterClient, this), typeof(IReliableAcknowledgedMessage));
+            ReliableChannel RC = new ReliableChannel(masterClient, this);
+            AddChannel(RC, typeof(IReliableMessage));
+            AddChannel(RC, typeof(IReliableAcknowledgedMessage));
         }
         private void AddChannel(Channel channel, Type channelType)
         {
