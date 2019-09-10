@@ -51,6 +51,7 @@
   <ItemGroup>
     <Compile Include="ReliableAckChannelTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="AcknowledgementClassTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

@@ -13,13 +13,13 @@ namespace Netkraft.Messaging
         {
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
-            //Add all writable filed types
-            foreach (Assembly A in assemblies)
+            //Add all writable field types
+            foreach (Assembly a in assemblies)
             {
-                MethodInfo[] WriteMethods = A.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)).Where(m => m.GetCustomAttributes(typeof(WritableFieldTypeWrite), false).Length > 0).ToArray();
-                MethodInfo[] ReadMethods = A.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)).Where(m => m.GetCustomAttributes(typeof(WritableFieldTypeRead), false).Length > 0).ToArray();
-
-                //Add types
+                MethodInfo[] WriteMethods = a.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)).Where(m => m.GetCustomAttributes(typeof(WritableFieldTypeWrite), false).Length > 0).ToArray();
+                MethodInfo[] ReadMethods = a.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)).Where(m => m.GetCustomAttributes(typeof(WritableFieldTypeRead), false).Length > 0).ToArray();
+                //TODO: dictionaries for write/read by type to avoid double loop
+                //Add types. Find method for same type if not both are declared type is ignored
                 foreach(MethodInfo wm in WriteMethods)
                 {
                     Type wt = ((WritableFieldTypeWrite)wm.GetCustomAttribute(typeof(WritableFieldTypeWrite), false)).type;
@@ -53,6 +53,7 @@ namespace Netkraft.Messaging
                 || typeof(IReliableMessage).IsAssignableFrom(t)
                 || typeof(IReliableAcknowledgedMessage).IsAssignableFrom(t);
         }
+
         //Binary Reader-Writer
         private static readonly int _supportedArrayDimensionDepth = 4;
         private static Dictionary<Type, (Action<Stream, object> writer, Func<Stream, object> reader)> BinaryFunctions = new Dictionary<Type, (Action<Stream, object> writer, Func<Stream, object> reader)>();
@@ -139,14 +140,14 @@ namespace Netkraft.Messaging
         private static void WriteArray<T>(Stream stream, object value)
         {
             T[] array = (T[])value;
-            BinaryWriter writer = new BinaryWriter(stream);
+            BinaryWriter writer = new BinaryWriter(stream); //TODO: use bitconverter
             writer.Write((uint)array.Length);//Place header for array length
             for (int i=0; i< array.Length; i++)
                 BinaryFunctions[typeof(T)].writer(stream, array[i]);
         }
         private static object ReadArray<T>(Stream stream)
         {
-            BinaryReader reader = new BinaryReader(stream);
+            BinaryReader reader = new BinaryReader(stream); //TODO: use bitcovnerter
             uint length = reader.ReadUInt32();//Read header for array length
             T[] array = new T[length];
             for (int i = 0; i < length; i++)
@@ -184,5 +185,4 @@ namespace Netkraft.Messaging
             this.type = type;
         }
     }
-
 }

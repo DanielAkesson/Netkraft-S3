@@ -1,4 +1,5 @@
 ﻿using Netkraft.Messaging;
+using NetKraft;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -12,7 +13,6 @@ namespace Netkraft
         private Dictionary<Type, Channel> _typeToChannel = new Dictionary<Type, Channel>();
         private List<Channel> _channels = new List<Channel>();
         private List<NetkraftPlayer> _clientPlayers = new List<NetkraftPlayer>();
-
 
         public ClientConnection(NetkraftClient masterClient, IPEndPoint ipEndPoint)
         {
@@ -44,10 +44,11 @@ namespace Netkraft
                 c.SendQueue();
         }
         //internal
-        internal void Recive(byte[] buffer, int size)
+        internal void Receive(byte[] buffer, int size)
         {
+            //This would switch to the correct channel method
             byte channel = (byte)BitConverter.ToChar(buffer, 0);
-            _channels[channel].Recive(buffer, size);
+            _channels[channel].Receive(buffer, size);
         }
         internal void ReceiveTick()
         {
@@ -63,17 +64,5 @@ namespace Netkraft
         {
             return _typeToChannel[channelType];
         }
-    }
-    public abstract class Channel
-    {
-        protected NetkraftClient _masterClient;
-        protected ClientConnection _connection;
-        
-        public abstract void AddToQueue(object message);
-        public abstract void SendImmediately(object message);
-        public abstract void SendQueue();
-        public abstract void Recive(byte[] buffer, int size);
-        public abstract void ReceiveTick();
-        public abstract void ReceiveTickRestrictive();
     }
 }

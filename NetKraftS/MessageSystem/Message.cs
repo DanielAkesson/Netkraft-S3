@@ -19,13 +19,6 @@ namespace Netkraft.Messaging
         /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made. </para>
         /// </summary>
         void OnReceive(ClientConnection Context);
-        /// <summary>
-        /// This is a callback method for when a message is sent from a <see cref="NetkraftClient"/>.
-        /// The object this method is called on will have the correct context and data.
-        /// <para>This object is reused everytime a message of this class is sent, meaning it's a volatile pointer and can not be stored.
-        /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.</para>
-        /// </summary>
-        void OnSend(ClientConnection Context);
     }
     /// <summary>
     /// Any class or struct that inherits this Interface will automaticlly have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
@@ -42,14 +35,7 @@ namespace Netkraft.Messaging
         /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
         /// </summary>
         void OnReceive(ClientConnection Context);
-        /// <summary>
-        /// This is a callback method for when a message is sent from a NetkraftClient.
-        /// The object this method is called on will have the correct context and data.
-        /// <para></para>
-        /// This object is reused everytime a message of this class is sent, meaning it's a volatile pointer and can not be stored.
-        /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
-        /// </summary>
-        void OnSend(ClientConnection Context);
+
         void OnAcknowledgment(ClientConnection Context);
     }
     /// <summary>
@@ -67,14 +53,6 @@ namespace Netkraft.Messaging
         /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
         /// </summary>
         void OnReceive(ClientConnection Context);
-        /// <summary>
-        /// This is a callback method for when a message is sent from a NetkraftClient.
-        /// The object this method is called on will have the correct context and data.
-        /// <para></para>
-        /// This object is reused everytime a message of this class is sent, meaning it's a volatile pointer and can not be stored.
-        /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
-        /// </summary>
-        void OnSend(ClientConnection Context);
     }
     /// <summary>
     /// Any class or struct that inherits this Interface will automaticlly have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
@@ -92,14 +70,7 @@ namespace Netkraft.Messaging
         /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
         /// </summary>
         void OnReceive(ClientConnection Context);
-        /// <summary>
-        /// This is a callback method for when a message is sent from a NetkraftClient.
-        /// The object this method is called on will have the correct context and data.
-        /// <para></para>
-        /// This object is reused everytime a message of this class is sent, meaning it's a volatile pointer and can not be stored.
-        /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
-        /// </summary>
-        void OnSend(ClientConnection Context);
+
         void OnAcknowledgment(ClientConnection Context);
     }
     public static class Message
@@ -114,26 +85,26 @@ namespace Netkraft.Messaging
             Console.WriteLine("Inizilaze message system");
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
             List<Type> messages = new List<Type>();
-            foreach (Assembly A in assemblies)
+            foreach (Assembly a in assemblies)
             {
-                foreach (Type T in A.GetTypes())
+                foreach (Type t in a.GetTypes())
                 {
-                    if (typeof(IUnreliableMessage).IsAssignableFrom(T))
-                        _typeToChannelType.Add(T, typeof(IUnreliableMessage));
-                    else if (typeof(IUnreliableAcknowledgedMessage).IsAssignableFrom(T))
-                        _typeToChannelType.Add(T, typeof(IUnreliableAcknowledgedMessage));
-                    else if (typeof(IReliableMessage).IsAssignableFrom(T))
-                        _typeToChannelType.Add(T, typeof(IReliableMessage));
-                    else if (typeof(IReliableAcknowledgedMessage).IsAssignableFrom(T))
-                        _typeToChannelType.Add(T, typeof(IReliableAcknowledgedMessage));
+                    if (typeof(IUnreliableMessage).IsAssignableFrom(t))
+                        _typeToChannelType.Add(t, typeof(IUnreliableMessage));
+                    else if (typeof(IUnreliableAcknowledgedMessage).IsAssignableFrom(t))
+                        _typeToChannelType.Add(t, typeof(IUnreliableAcknowledgedMessage));
+                    else if (typeof(IReliableMessage).IsAssignableFrom(t))
+                        _typeToChannelType.Add(t, typeof(IReliableMessage));
+                    else if (typeof(IReliableAcknowledgedMessage).IsAssignableFrom(t))
+                        _typeToChannelType.Add(t, typeof(IReliableAcknowledgedMessage));
                     else
                         continue;
-                    messages.Add(T);
+                    messages.Add(t);
                 }
             }
             foreach (Type t in messages)
             {
-                ushort id = (ushort)_typeToMessageID.Keys.Count;
+                ushort id = (ushort)_typeToMessageID.Keys.Count; //TODO: make this more reliable since both clients need all messages in the same order.
                 _typeToMessageID.Add(t, id);
                 _IDToMessageType.Add(id, t);
             }
@@ -142,7 +113,7 @@ namespace Netkraft.Messaging
         /// <summary>
         /// Read a message from a stream.
         /// An object of the read message type will be assigned and called OnReceive with the data retrived.
-        /// This message object is a volatile pointer and can not be stored without making a deep copy first. 
+        /// This message object is a volatile pointer and can not be stored without making a deep copy first.
         /// </summary>
         /// <param name="stream">Stream to read message from</param>
         /// <param name="context">NetkraftClient this message was received at and the endPoint that sent it</param>
@@ -175,11 +146,13 @@ namespace Netkraft.Messaging
             return _typeToChannelType.ContainsKey(message.GetType()) ? _typeToChannelType[message.GetType()] : null;
         }
         //Callbacks to user created messages.
+
         /// <summary>
-        /// Creates a deep copy of the calling message.
+        /// Creates a deep copy of the <paramref name="message"/>.
         /// This copy can be stored knowing it will not change or be alterd by the system.
         /// </summary>
-        /// <returns>A stand alone deep copy of the calling message</returns>
+        /// <param name="message">Message to be copied</param>
+        /// <returns>A stand alone deep copy of <paramref name="message"/></returns>
         public static object CopyMessage(object message)
         {
             _copyStream.Seek(0, SeekOrigin.Begin); //Seek zero.

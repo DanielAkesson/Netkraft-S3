@@ -1,5 +1,6 @@
 ﻿using Netkraft.Messaging;
 using System.IO;
+using System;
 
 namespace Netkraft
 {
@@ -10,6 +11,7 @@ namespace Netkraft
         [WritableFieldTypeWrite(typeof(int))]
         internal static void WriteInt32(Stream stream, object value)
         {
+            //stream.Write(BitConverter.GetBytes((int)value), 0, 4);
             BinaryWriter writer = new BinaryWriter(stream);
             writer.Write((int)value);
         }

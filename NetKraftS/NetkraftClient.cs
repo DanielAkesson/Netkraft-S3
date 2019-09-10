@@ -28,7 +28,6 @@ namespace Netkraft
         public Action<RequestJoinResponse> JoinResponseCallback;
         public Action<RequestJoin, ClientConnection> ClientJoinCallback;
 
-
         private Random rand = new Random();
         public int FakeLossProcent = 0;
 
@@ -41,35 +40,31 @@ namespace Netkraft
         }
         private void Receive()
         {
-            while (true)
+            while(true)
             {
                 int size = _socket.ReceiveFrom(_buffer, ref _sender);
                 if (_iPEndPointToClientConnection.ContainsKey((IPEndPoint)_sender))
                 {
-                    _iPEndPointToClientConnection[(IPEndPoint)_sender].Recive(_buffer, size);
+                    _iPEndPointToClientConnection[(IPEndPoint)_sender].Receive(_buffer, size);
                 }
                 //Host handeling unhandeled connections
                 else if(_iPEndPointToUnhandeledConnections != null)
                 {
-                    if (_iPEndPointToUnhandeledConnections.ContainsKey((IPEndPoint)_sender))
+                    if (!_iPEndPointToUnhandeledConnections.ContainsKey((IPEndPoint)_sender))
                     {
-                        _iPEndPointToUnhandeledConnections[(IPEndPoint)_sender].Recive(_buffer, size);
-                    }
-                    else
-                    {
-                        lock(_iPEndPointToUnhandeledConnections)
+                        lock (_iPEndPointToUnhandeledConnections)
                         {
                             _iPEndPointToUnhandeledConnections.Add((IPEndPoint)_sender, new ClientConnection(this, (IPEndPoint)_sender));
-                            _iPEndPointToUnhandeledConnections[(IPEndPoint)_sender].Recive(_buffer, size);
                         }
                     }
+                    _iPEndPointToUnhandeledConnections[(IPEndPoint)_sender].Receive(_buffer, size);
                 }
             }
         }
-        internal void SendStream(MemoryStream stream, int SizeOfStreamToSend, ClientConnection client)
+        internal void SendStream(MemoryStream stream, int sizeOfStreamToSend, ClientConnection client)
         {
             if (rand.Next(1, 100) < FakeLossProcent) return;
-            _socket.SendTo(stream.GetBuffer(), 0, SizeOfStreamToSend, SocketFlags.None, client.IpEndPoint);
+            _socket.SendTo(stream.GetBuffer(), 0, sizeOfStreamToSend, SocketFlags.None, client.IpEndPoint);
         }
 
         //Public methods!
@@ -102,17 +97,18 @@ namespace Netkraft
             SendImmediately(new RequestJoin {MacAddress = "00000000"});
         }
 
-        public void AddEndPoint(IPEndPoint ipEndPoint)
+        public ClientConnection AddEndPoint(IPEndPoint ipEndPoint)
         {
             ClientConnection c = new ClientConnection(this, ipEndPoint);
             _clientConnections.Add(c);
             if(!_iPEndPointToClientConnection.ContainsKey(ipEndPoint))
                 _iPEndPointToClientConnection.Add(ipEndPoint, c);
+            return c;
         }
-        public void AddEndPoint(string ip, int port)
+        public ClientConnection AddEndPoint(string ip, int port)
         {
             IPEndPoint endPoint = new IPEndPoint(IPAddress.Parse(ip), port);
-            AddEndPoint(endPoint);
+            return AddEndPoint(endPoint);
         }
         public void ReceiveTick()
         {
@@ -127,7 +123,6 @@ namespace Netkraft
                     CC.ReceiveTickRestrictive();
             }
         }
-        public ClientConnection GetClientConnection(IPEndPoint ipEndPoint) => _iPEndPointToClientConnection[ipEndPoint];
     }
 
     public class RequestJoin : IUnreliableMessage
@@ -137,13 +132,9 @@ namespace Netkraft
         public void OnReceive(ClientConnection Context)
         {
             Console.WriteLine("Join Request from: " + Context.IpEndPoint.Address);
-            Context.MasterClient.AddEndPoint(Context.IpEndPoint);
-            Context.SendImmediately(new RequestJoinResponse {Allowed = true, Reason = "Success" });
-            Context.MasterClient.ClientJoinCallback?.Invoke(this, Context.MasterClient.GetClientConnection(Context.IpEndPoint));
-        }
-
-        public void OnSend(ClientConnection Context)
-        {
+            ClientConnection newConnection = Context.MasterClient.AddEndPoint(Context.IpEndPoint);
+            Context.SendImmediately(new RequestJoinResponse {Allowed = true, Reason = "Failed" });
+            Context.MasterClient.ClientJoinCallback?.Invoke(this, newConnection);
         }
     }
     public class RequestJoinResponse : IUnreliableMessage
@@ -155,10 +146,6 @@ namespace Netkraft
         {
             Console.WriteLine("Join response: " + Reason);
             Context.MasterClient.JoinResponseCallback?.Invoke(this);
-        }
-
-        public void OnSend(ClientConnection Context)
-        {
         }
     }
 }

@@ -6,7 +6,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{B2B3565B-C508-4578-A5BA-5E00D82CE740}</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>NetKraftS</RootNamespace>
+    <RootNamespace>NetKraft</RootNamespace>
     <AssemblyName>NetKraftS</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
@@ -48,16 +48,18 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ByteConverter.cs" />
-    <Compile Include="ReliableChannel.cs" />
-    <Compile Include="UnreliableAcknowledgedChannel.cs" />
-    <Compile Include="UnreliableChannel.cs" />
+    <Compile Include="Channels\Acknowledger.cs" />
+    <Compile Include="MessageSystem\ByteConverter.cs" />
+    <Compile Include="Channels\Channel.cs" />
+    <Compile Include="Channels\ReliableChannel.cs" />
+    <Compile Include="Channels\UnreliableAcknowledgedChannel.cs" />
+    <Compile Include="Channels\UnreliableChannel.cs" />
     <Compile Include="ClientConnection.cs" />
-    <Compile Include="Message.cs" />
+    <Compile Include="MessageSystem\Message.cs" />
     <Compile Include="NetkraftClient.cs" />
     <Compile Include="NetkraftPlayer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="WritableSystem.cs" />
+    <Compile Include="MessageSystem\WritableSystem.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

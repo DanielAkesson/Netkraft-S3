@@ -1,4 +1,5 @@
 ﻿using Netkraft.Messaging;
+using NetKraft;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -45,7 +46,6 @@ namespace Netkraft
             foreach (object o in _messageQueues[_currentAcknowledgeID % 32])
             {
                 Message.WriteMessage(_queueMessageStream, o);
-                ((IUnreliableAcknowledgedMessage)o).OnSend(_connection);
             }
             _currentAcknowledgeID++;
             _messageQueues[_currentAcknowledgeID % 32].Clear();
@@ -53,7 +53,7 @@ namespace Netkraft
             _masterClient.SendStream(_queueMessageStream, (int)_queueMessageStream.Position, _connection);
         }
         //Internal methods Called on Recive Thread!
-        public override void Recive(byte[] buffer, int size)
+        public override void Receive(byte[] buffer, int size)
         {
             lock (_receiveStream)
             {
