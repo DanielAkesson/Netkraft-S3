@@ -53,7 +53,7 @@ namespace Netkraft
                     SetMask(ref _ackMask, messageID, true);
                 }
             }
-            Console.WriteLine(MaskMessage + "For id: " + id);
+            //Console.WriteLine(MaskMessage + "For id: " + id);
         }
         public uint GetReceiveMaskForId(int id)
         {

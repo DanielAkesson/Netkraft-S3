@@ -11,23 +11,31 @@ namespace Netkraft
         private MemoryStream _queueMessageStream = new MemoryStream();
         private MemoryStream _receiveStream = new MemoryStream();
         private int _messagesInReceiveStream = 0;
-        private List<object>[] _messageQueues = new List<object>[32];
+        private List<object>[] _messageQueues = new List<object>[64];
         private List<UnreliableAcknowledgmentMessage> _AckMessagesToSend = new List<UnreliableAcknowledgmentMessage>();
-
-        private byte _currentAcknowledgeID = 0;
-        private byte _largestRecivedAcknowledgeID;
-        private uint _ackMask;
+        private int _currentId = 0;
+        private Acknowledger _acker;
         public UnreliableAcknowledgedChannel(NetkraftClient masterClient, ClientConnection connection)
         {
             _masterClient = masterClient;
             _connection = connection;
-            for(int i=0;i<32;i++)
+            _acker = new Acknowledger((x) =>
+            {
+                //Console.WriteLine("Acknowledge: " + x);
+                foreach (object o in _messageQueues[x % 64])
+                {
+                    if (o is IAcknowledged)
+                        ((IAcknowledged)o).OnAcknowledgment(connection);
+                }
+                _messageQueues[x % 64].Clear();
+            });
+            for (int i=0;i<64;i++)
                 _messageQueues[i] = new List<object>();
         }
        
         public override void AddToQueue(object message)
         {
-            _messageQueues[_currentAcknowledgeID % 32].Add(message);
+            _messageQueues[_currentId % 64].Add(message);
         }
         public override void SendImmediately(object message)
         {
@@ -36,19 +44,21 @@ namespace Netkraft
         }
         public override void SendQueue()
         {
-            if (_messageQueues[_currentAcknowledgeID % 32].Count == 0) return;
+            if (_messageQueues[_currentId % 64].Count == 0)
+                return;
             _queueMessageStream.Seek(0, SeekOrigin.Begin);
             //Writing header
             ByteConverter.WriteByte(_queueMessageStream, (byte)1);//Channel type
-            ByteConverter.WriteByte(_queueMessageStream, _currentAcknowledgeID);//Acknowledge ID
-            ByteConverter.WriteUInt16(_queueMessageStream, (ushort)_messageQueues[_currentAcknowledgeID % 32].Count);//Amount of messages encoded
+            ByteConverter.WriteByte(_queueMessageStream, (byte)(_currentId % 64));//Acknowledge ID
+            ByteConverter.WriteUInt16(_queueMessageStream, (ushort)_messageQueues[_currentId % 64].Count);//Amount of messages encoded
             //Writing body
-            foreach (object o in _messageQueues[_currentAcknowledgeID % 32])
+            foreach (object o in _messageQueues[_currentId % 64])
             {
                 Message.WriteMessage(_queueMessageStream, o);
             }
-            _currentAcknowledgeID++;
-            _messageQueues[_currentAcknowledgeID % 32].Clear();
+            _acker.OnSendMessage(_currentId % 64);
+            _currentId++;
+            _messageQueues[_currentId % 64].Clear();
             //Sending message
             _masterClient.SendStream(_queueMessageStream, (int)_queueMessageStream.Position, _connection);
         }
@@ -57,9 +67,9 @@ namespace Netkraft
         {
             lock (_receiveStream)
             {
-                BitConverter.ToChar(buffer, 0);//This would switch to the correct channel method
                 byte id = (byte)BitConverter.ToChar(buffer, 1);
-                uint mask = GetMaskForId(id);//Acknowledge ID
+                _acker.OnReceiveMessage(id);
+                uint mask = _acker.GetReceiveMaskForId(id);//Acknowledge ID
                 _messagesInReceiveStream += BitConverter.ToUInt16(buffer, 2);//Amount of messages encoded
                 _receiveStream.Write(buffer, 4, size - 4); //4 because of header (byte + byte + ushort)
                 lock(_AckMessagesToSend)
@@ -76,7 +86,7 @@ namespace Netkraft
                 //Read
                 _receiveStream.Seek(0, SeekOrigin.Begin);
                 for (int i = 0; i < _messagesInReceiveStream; i++)
-                    ((IUnreliableAcknowledgedMessage)Message.ReadMessage(_receiveStream, _connection)).OnReceive(_connection);
+                    ((IUnreliableMessage)Message.ReadMessage(_receiveStream, _connection)).OnReceive(_connection);
                 //Send reliable ack
                 lock (_AckMessagesToSend)
                     foreach (UnreliableAcknowledgmentMessage RAM in _AckMessagesToSend)
@@ -87,18 +97,6 @@ namespace Netkraft
                 _messagesInReceiveStream = 0;
             }
         }
-        private uint GetMaskForId(byte id)
-        {
-            byte bigId = _largestRecivedAcknowledgeID;
-            // Gives a value from (-128 <---> 128)
-            int delta = Math.Abs(id - bigId) > 128 ? (id - bigId < 0 ? (id - bigId) + 256 : id - (bigId + 256)) : id - bigId;
-            //If delta is greater than 0 we move the mask to the left and add the one at the beginning
-            //If delta is smaller or equal to 0 we move a 1 mask to the left and add it to the existing mask
-            _ackMask = delta > 0 ? (_ackMask << delta) | 1 : _ackMask | (uint)(1 << (delta * -1));
-            _largestRecivedAcknowledgeID = delta > 0 ? id : bigId;
-            return _ackMask;
-        }
-
         public override void ReceiveTickRestrictive()
         {
             //TODO: make a permenant solution
@@ -109,7 +107,7 @@ namespace Netkraft
                 _receiveStream.Seek(0, SeekOrigin.Begin);
                 for (int i = 0; i < _messagesInReceiveStream; i++)
                 {
-                    IUnreliableAcknowledgedMessage message = (IUnreliableAcknowledgedMessage)Message.ReadMessage(_receiveStream, _connection);
+                    IUnreliableMessage message = (IUnreliableMessage)Message.ReadMessage(_receiveStream, _connection);
                     if (message is RequestJoin)
                         message.OnReceive(_connection);
                 }
@@ -132,25 +130,8 @@ namespace Netkraft
 
             public void OnReceive(ClientConnection Context)
             {
-                UnreliableAcknowledgedChannel con = (UnreliableAcknowledgedChannel)Context.GetChannelOfType(typeof(IUnreliableAcknowledgedMessage));
-                string MaskMessage = "Received acknowledgment for: ";
-                for (int i = 0; i < 32; i++)
-                {
-                    int messageID = ((Id - i) + 256) % 256;
-                    //If id is confirmed call acknowledgment on all message objects for that UDP packet
-                    MaskMessage += ((Mask >> i) & 1) + " ";
-                    if (((Mask >> i) & 1) == 1)
-                    {
-                        con._messageQueues[messageID % 32].ForEach(x => ((IUnreliableAcknowledgedMessage)x).OnAcknowledgment(Context));
-                        con._messageQueues[messageID % 32].Clear();
-                    }
-                }
-                Console.WriteLine(MaskMessage + "For id: " + Id);
-            }
-
-            public void OnSend(ClientConnection Context)
-            {
-                Console.WriteLine("Sending ack message");
+                UnreliableAcknowledgedChannel con = (UnreliableAcknowledgedChannel)Context.GetMessageChannel(ChannelId.UnreliableAcknowledged);
+                con._acker.OnReceiveAcknowledgement(Mask, Id);
             }
         }
     } 

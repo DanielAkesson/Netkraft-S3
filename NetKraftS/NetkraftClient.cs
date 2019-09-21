@@ -131,9 +131,9 @@ namespace Netkraft
 
         public void OnReceive(ClientConnection Context)
         {
-            Console.WriteLine("Join Request from: " + Context.IpEndPoint.Address);
+            //Console.WriteLine("Join Request from: " + Context.IpEndPoint.Address);
             ClientConnection newConnection = Context.MasterClient.AddEndPoint(Context.IpEndPoint);
-            Context.SendImmediately(new RequestJoinResponse {Allowed = true, Reason = "Failed" });
+            Context.SendImmediately(new RequestJoinResponse {Allowed = true, Reason = "IDONO" });
             Context.MasterClient.ClientJoinCallback?.Invoke(this, newConnection);
         }
     }
@@ -144,7 +144,7 @@ namespace Netkraft
 
         public void OnReceive(ClientConnection Context)
         {
-            Console.WriteLine("Join response: " + Reason);
+            //Console.WriteLine("Join response: " + Reason);
             Context.MasterClient.JoinResponseCallback?.Invoke(this);
         }
     }

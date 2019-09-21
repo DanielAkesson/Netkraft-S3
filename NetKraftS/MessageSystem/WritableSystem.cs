@@ -49,9 +49,7 @@ namespace Netkraft.Messaging
         {
             return t.GetCustomAttribute(typeof(Writable)) != null 
                 || typeof(IUnreliableMessage).IsAssignableFrom(t)
-                || typeof(IUnreliableAcknowledgedMessage).IsAssignableFrom(t)
-                || typeof(IReliableMessage).IsAssignableFrom(t)
-                || typeof(IReliableAcknowledgedMessage).IsAssignableFrom(t);
+                || typeof(IReliableMessage).IsAssignableFrom(t);
         }
 
         //Binary Reader-Writer

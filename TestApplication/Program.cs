@@ -17,10 +17,10 @@ namespace TestApplication
         public static int Recived = 0;
         static void Main(string[] args)
         {
-            TestJoinHost();
+            TestReliableAcked();
         }
 
-        static void TestJoinHost()
+        static void TestReliableAcked()
         {
             NetkraftClient client1 = new NetkraftClient(2001);
             NetkraftClient client2 = new NetkraftClient(3000);
@@ -35,6 +35,35 @@ namespace TestApplication
                 if(new Random().NextDouble() > 0.5)
                 {
                     client2.AddToQueue(new SimpleHello { HelloMessage = "Tjabba" });
+                    Sent++;
+                }
+                client1.SendQueue();
+                client2.SendQueue();
+                client1.ReceiveTick();
+                client2.ReceiveTick();
+                Thread.Sleep(10);
+                Console.ForegroundColor = Sent - Recived == 0 ? ConsoleColor.Green : ConsoleColor.Red;
+                Console.WriteLine("Recive Fail: " + (Sent - Recived));
+                Console.ForegroundColor = Sent - Acked == 0 ? ConsoleColor.Green : ConsoleColor.Red;
+                Console.WriteLine("Acked Fail: " + (Sent - Acked));
+                Console.ForegroundColor = ConsoleColor.White;
+            }
+        }
+        static void TestUnreliableAcked()
+        {
+            NetkraftClient client1 = new NetkraftClient(2001);
+            NetkraftClient client2 = new NetkraftClient(3000);
+
+            client1.Host();
+            client2.Join("127.0.0.1", 2001);
+            client2.FakeLossProcent = 0;
+            client1.FakeLossProcent = 0;
+            while (true)
+            {
+                //Send message to host
+                if (new Random().NextDouble() > 0.5)
+                {
+                    client2.AddToQueue(new SimpleHello2 { HelloMessage = "Tjabba" });
                     Sent++;
                 }
                 client1.SendQueue();
@@ -83,7 +112,7 @@ namespace TestApplication
         }
     }
 
-    public struct Hello : IReliableAcknowledgedMessage
+    public struct Hello : IReliableMessage, IAcknowledged
     {
         public string HelloMessage;
         public int Num1;
@@ -108,21 +137,34 @@ namespace TestApplication
         public void OnSend(ClientConnection Context){}
     }
 
-    public struct SimpleHello : IReliableAcknowledgedMessage
+    public struct SimpleHello : IReliableMessage, IAcknowledged
     {
         public string HelloMessage;
-
-        public void OnAcknowledgment(ClientConnection Context)
-        {
-            Program.Acked++;
-        }
 
         public void OnReceive(ClientConnection Context)
         {
             Program.Recived++;
         }
 
-        public void OnSend(ClientConnection Context) { }
+        public void OnAcknowledgment(ClientConnection Context)
+        {
+            Program.Acked++;
+        }
+    }
+
+    public struct SimpleHello2 : IUnreliableMessage, IAcknowledged
+    {
+        public string HelloMessage;
+
+        public void OnReceive(ClientConnection Context)
+        {
+            Program.Recived++;
+        }
+
+        public void OnAcknowledgment(ClientConnection Context)
+        {
+            Program.Acked++;
+        }
     }
 
     [Writable]

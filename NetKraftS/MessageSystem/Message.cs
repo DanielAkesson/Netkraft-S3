@@ -22,24 +22,6 @@ namespace Netkraft.Messaging
     }
     /// <summary>
     /// Any class or struct that inherits this Interface will automaticlly have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
-    /// <para>This message type is not guaranteed to be delivered to end-client</para>
-    /// <para>This message is acknowledged and <see cref="OnAcknowledgment(ClientConnection)"/> will be called once the end-client has recvied the message.</para>
-    /// </summary>
-    public interface IUnreliableAcknowledgedMessage
-    {
-        /// <summary>
-        /// This is a callback method for when a message is read from a NetkraftClient.
-        /// The object this method is called on will have the correct context and data.
-        /// <para></para>
-        /// This object is reused everytime a message of this class is received, meaning it's a volatile pointer and can not be stored.
-        /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
-        /// </summary>
-        void OnReceive(ClientConnection Context);
-
-        void OnAcknowledgment(ClientConnection Context);
-    }
-    /// <summary>
-    /// Any class or struct that inherits this Interface will automaticlly have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
     /// <para>This message type is guaranteed to be delivered to end-client and will therefore be resent until acknowledgement is confirmed.</para>
     /// <remarks>Note: This message is not slower then <see cref="IUnreliableMessage"/> however, it's resent multiple times and should be avoided if the amount of data sent is a concern</remarks>
     /// </summary>
@@ -55,49 +37,35 @@ namespace Netkraft.Messaging
         void OnReceive(ClientConnection Context);
     }
     /// <summary>
-    /// Any class or struct that inherits this Interface will automaticlly have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
-    /// <para>This message type is guaranteed to be delivered to end-client and will therefore be resent until acknowledgement is confirmed.</para>
-    /// <para>This message is acknowledged and <see cref="OnAcknowledgment(ClientConnection)"/> will be called once the end-client has recvied the message.</para>
-    /// <para>Note: This message is not slower then <see cref="IUnreliableAcknowledgedMessage"/> however, it's resent multiple times and should be avoided if the amount of data sent is a concern</para>
+    /// Any class or struct that inherits this Interface will automaticlly needs the <see cref="IReliableMessage"/> or <see cref="IUnreliableMessage"/> interface.
+    /// <para>This message will be acknowledged and <see cref="OnAcknowledgment(ClientConnection)"/> will be called once the end-client has recvied the message.</para>
     /// </summary>
-    public interface IReliableAcknowledgedMessage
+    public interface IAcknowledged
     {
         /// <summary>
-        /// This is a callback method for when a message is read from a NetkraftClient.
-        /// The object this method is called on will have the correct context and data.
-        /// <para></para>
-        /// This object is reused everytime a message of this class is received, meaning it's a volatile pointer and can not be stored.
-        /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
+        /// OnAcknowledgment is called once this message has been confirmed to have been received by the end client
+        /// <paramref name="Context"/>
         /// </summary>
-        void OnReceive(ClientConnection Context);
-
+        /// <param name="Context">The client that received the message</param>
         void OnAcknowledgment(ClientConnection Context);
     }
+
     public static class Message
     {
-        private static Dictionary<Type, Type> _typeToChannelType = new Dictionary<Type, Type>();
         private static Dictionary<Type, ushort> _typeToMessageID = new Dictionary<Type, ushort>();
         private static Dictionary<ushort, Type> _IDToMessageType = new Dictionary<ushort, Type>();
         private static MemoryStream _copyStream = new MemoryStream();
 
         static Message()
         {
-            Console.WriteLine("Inizilaze message system");
+            //Console.WriteLine("Inizilaze message system");
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
             List<Type> messages = new List<Type>();
             foreach (Assembly a in assemblies)
             {
                 foreach (Type t in a.GetTypes())
                 {
-                    if (typeof(IUnreliableMessage).IsAssignableFrom(t))
-                        _typeToChannelType.Add(t, typeof(IUnreliableMessage));
-                    else if (typeof(IUnreliableAcknowledgedMessage).IsAssignableFrom(t))
-                        _typeToChannelType.Add(t, typeof(IUnreliableAcknowledgedMessage));
-                    else if (typeof(IReliableMessage).IsAssignableFrom(t))
-                        _typeToChannelType.Add(t, typeof(IReliableMessage));
-                    else if (typeof(IReliableAcknowledgedMessage).IsAssignableFrom(t))
-                        _typeToChannelType.Add(t, typeof(IReliableAcknowledgedMessage));
-                    else
+                    if (!typeof(IUnreliableMessage).IsAssignableFrom(t) && !typeof(IReliableMessage).IsAssignableFrom(t))
                         continue;
                     messages.Add(t);
                 }
@@ -136,17 +104,8 @@ namespace Netkraft.Messaging
             writer.Write(_typeToMessageID[message.GetType()]);
             WritableSystem.Write(stream, message);
         }
-        /// <summary>
-        /// Get the channel type for this object.
-        /// </summary>
-        /// <param name="message">Message object</param>
-        /// <returns>Channel type or null if object id not a messageType</returns>
-        public static Type GetChannelType(object message)
-        {
-            return _typeToChannelType.ContainsKey(message.GetType()) ? _typeToChannelType[message.GetType()] : null;
-        }
-        //Callbacks to user created messages.
 
+        //Callbacks to user created messages.
         /// <summary>
         /// Creates a deep copy of the <paramref name="message"/>.
         /// This copy can be stored knowing it will not change or be alterd by the system.
