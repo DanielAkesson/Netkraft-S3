@@ -164,7 +164,11 @@ namespace Netkraft.Messaging
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
     public class SkipIndex : Attribute{}
-
+    /// <summary>
+    /// Assign a method to write an object of <see cref="Type"/> to a <see cref="Stream"/>. 
+    /// <see cref="WritableFieldTypeWrite"/> can only be applied to methods that are public and take the parameters <see cref="Stream"/> and <see cref="object"/>. 
+    /// The method should return Void.
+    /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
     public class WritableFieldTypeWrite : Attribute
     {
@@ -174,6 +178,11 @@ namespace Netkraft.Messaging
             this.type = type;
         }
     }
+    /// <summary>
+    /// Assign a method to read an object of <see cref="Type"/> from a <see cref="Stream"/>. 
+    /// <see cref="WritableFieldTypeRead"/> can only be applied to methods that are public and take the parameters <see cref="Stream"/>. 
+    /// The method should return the <see cref="object"/> read from the stream
+    /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
     public class WritableFieldTypeRead : Attribute
     {
