@@ -17,7 +17,7 @@ namespace TestApplication
         public static int Recived = 0;
         static void Main(string[] args)
         {
-            TestReliableAcked();
+            TestAllTypes();
         }
 
         static void TestReliableAcked()
@@ -110,6 +110,25 @@ namespace TestApplication
                 Thread.Sleep(100);
             }
         }
+        static void TestAllTypes()
+        {
+            NetkraftClient client1 = new NetkraftClient(2000);
+            NetkraftClient client2 = new NetkraftClient(3000);
+
+            client1.Host();
+            client2.Join("127.0.0.1", 2000);
+            while (true)
+            {
+                Console.WriteLine("Sending");
+                client1.AddToQueue(new TestAllTypes());
+                client1.SendQueue();
+                client2.SendQueue();
+
+                client1.ReceiveTick();
+                client2.ReceiveTick();
+                Thread.Sleep(100);
+            }
+        }
     }
 
     public struct Hello : IReliableMessage, IAcknowledged
@@ -166,6 +185,31 @@ namespace TestApplication
             Program.Acked++;
         }
     }
+
+    public class TestAllTypes : IUnreliableMessage
+    {
+        public int intvar = -1;
+        public uint uintvar = 1;
+        public short shortvar = -2;
+        public ushort ushortvar = 2;
+        public long longvar = -3;
+        public ulong ulongvar = 3;
+        public byte bytevar = 4;
+        public float singelvar = 5.5f;
+        public double doublevar = 6.6d;
+        public string stringvar = "Hello";
+        public HelloWritable WritableVar = new HelloWritable
+        {
+            NumArrayDesc = "5 Elements",
+            NumArray = new int[] { 1, 2, 3, 4, 5 }
+        };
+
+        public void OnReceive(ClientConnection Context)
+        {
+            Console.WriteLine($"Succes: {intvar}, {uintvar}, {shortvar}, {ushortvar}, {longvar}, {ulongvar}, {bytevar}, {singelvar}, {doublevar}, {stringvar}");
+        }
+    }
+
 
     [Writable]
     public struct HelloWritable
