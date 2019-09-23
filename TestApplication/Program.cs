@@ -27,8 +27,8 @@ namespace TestApplication
 
             client1.Host();
             client2.Join("127.0.0.1", 2001);
-            client2.FakeLossProcent = 50;
-            client1.FakeLossProcent = 50;
+            client2.FakeLossPercentage = 50;
+            client1.FakeLossPercentage = 50;
             while (true)
             {
                 //Send message to host
@@ -56,8 +56,8 @@ namespace TestApplication
 
             client1.Host();
             client2.Join("127.0.0.1", 2001);
-            client2.FakeLossProcent = 0;
-            client1.FakeLossProcent = 0;
+            client2.FakeLossPercentage = 0;
+            client1.FakeLossPercentage = 0;
             while (true)
             {
                 //Send message to host
@@ -87,7 +87,7 @@ namespace TestApplication
             client2.Join("127.0.0.1", 2000);
 
 
-            client1.FakeLossProcent = 10;
+            client1.FakeLossPercentage = 10;
             while (true)
             {
                 Console.WriteLine("Sending");
@@ -216,7 +216,7 @@ namespace TestApplication
     {
         public string NumArrayDesc;
         public int[] NumArray;
-        public string ToString()
+        public override string ToString()
         {
             string temp = "Name: " + NumArrayDesc + " Numbs: ";
             foreach (int i in NumArray)

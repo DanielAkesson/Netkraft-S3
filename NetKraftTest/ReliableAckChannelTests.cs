@@ -23,8 +23,8 @@ namespace NetKraftTest
             NetkraftClient client2 = new NetkraftClient(3000);
             client1.Host();
             client2.Join("127.0.0.1", 2000);
-            client1.FakeLossProcent = 50;
-            client2.FakeLossProcent = 50;
+            client1.FakeLossPercentage = 50;
+            client2.FakeLossPercentage = 50;
             for (int i = 0; i < 10; i++)
             {
                 client1.SendQueue();
