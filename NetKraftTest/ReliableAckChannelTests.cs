@@ -64,7 +64,7 @@ namespace NetKraftTest
             }
         }
 
-        public struct TestMessage : IReliableAcknowledgedMessage
+        public struct TestMessage : IReliableMessage, IAcknowledged
         {
             public int index;
 
@@ -73,7 +73,6 @@ namespace NetKraftTest
                 Assert.AreEqual(_messageSent.ContainsKey(index), true, "Acknowlaged message that has not been sent!: " + index);
                 _messageAcked.Add(index, true);
             }
-
             public void OnReceive(ClientConnection Context)
             {
                 Assert.AreEqual(_messageSent.ContainsKey(index), true, "Recived a message that has not been sent!: " + index);

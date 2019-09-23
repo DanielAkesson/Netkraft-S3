@@ -1,7 +1,0 @@
-C:\Users\Daniel Åkesson\source\repos\NetkraftKraft3\Netkraft3\obj\Debug\Netkraft3.csprojAssemblyReference.cache
-C:\Users\Daniel Åkesson\source\repos\NetkraftKraft3\Netkraft3\obj\Debug\Netkraft3.csproj.CoreCompileInputs.cache
-C:\Users\Daniel Åkesson\source\repos\NetkraftKraft3\Netkraft3\obj\Debug\NetkraftMEssage.exe
-C:\Users\Daniel Åkesson\source\repos\NetkraftKraft3\Netkraft3\obj\Debug\NetkraftMEssage.pdb
-C:\Users\Daniel Åkesson\source\repos\NetkraftKraft3\Netkraft3\bin\Debug\NetkraftMEssage.exe.config
-C:\Users\Daniel Åkesson\source\repos\NetkraftKraft3\Netkraft3\bin\Debug\NetkraftMEssage.exe
-C:\Users\Daniel Åkesson\source\repos\NetkraftKraft3\Netkraft3\bin\Debug\NetkraftMEssage.pdb
