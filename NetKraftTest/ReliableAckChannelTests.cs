@@ -23,8 +23,8 @@ namespace NetKraftTest
             NetkraftClient client2 = new NetkraftClient(3000);
             client1.Host();
             client2.Join("127.0.0.1", 2000);
-            client1.FakeLossProcent = 50;
-            client2.FakeLossProcent = 50;
+            client1.FakeLossPercentage = 50;
+            client2.FakeLossPercentage = 50;
             for (int i = 0; i < 10; i++)
             {
                 client1.SendQueue();
@@ -64,7 +64,7 @@ namespace NetKraftTest
             }
         }
 
-        public struct TestMessage : IReliableAcknowledgedMessage
+        public struct TestMessage : IReliableMessage, IAcknowledged
         {
             public int index;
 
@@ -73,7 +73,6 @@ namespace NetKraftTest
                 Assert.AreEqual(_messageSent.ContainsKey(index), true, "Acknowlaged message that has not been sent!: " + index);
                 _messageAcked.Add(index, true);
             }
-
             public void OnReceive(ClientConnection Context)
             {
                 Assert.AreEqual(_messageSent.ContainsKey(index), true, "Recived a message that has not been sent!: " + index);

@@ -18,7 +18,7 @@ namespace Netkraft.Messaging
         /// <para>This object is reused everytime a message of this class is received, meaning it's a volatile pointer and can not be stored.
         /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made. </para>
         /// </summary>
-        void OnReceive(ClientConnection Context);
+        void OnReceive(ClientConnection context);
     }
     /// <summary>
     /// Any class or struct that inherits this Interface will automaticlly have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
@@ -34,7 +34,7 @@ namespace Netkraft.Messaging
         /// This object is reused everytime a message of this class is received, meaning it's a volatile pointer and can not be stored.
         /// If you want this message object stored <see cref="CopyMessage"/> that will allow deep copies of messages to be made.
         /// </summary>
-        void OnReceive(ClientConnection Context);
+        void OnReceive(ClientConnection context);
     }
     /// <summary>
     /// Any class or struct that inherits this Interface has to inherit <see cref="IReliableMessage"/> or <see cref="IUnreliableMessage"/> interface too.
@@ -44,10 +44,10 @@ namespace Netkraft.Messaging
     {
         /// <summary>
         /// OnAcknowledgment is called once this message has been confirmed to have been received by the end client
-        /// <paramref name="Context"/>
+        /// <paramref name="context"/>
         /// </summary>
-        /// <param name="Context">The client that received the message</param>
-        void OnAcknowledgment(ClientConnection Context);
+        /// <param name="context">The client that received the message</param>
+        void OnAcknowledgment(ClientConnection context);
     }
 
     public static class Message

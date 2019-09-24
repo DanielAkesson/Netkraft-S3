@@ -11,25 +11,25 @@ namespace Netkraft
     public class NetkraftClient
     {
         private Socket _socket;
-        private List<ClientConnection> _clientConnections = new List<ClientConnection>();
-        private Dictionary<IPEndPoint, ClientConnection> _iPEndPointToUnhandeledConnections = null;
-        private Dictionary<IPEndPoint, ClientConnection> _iPEndPointToClientConnection = new Dictionary<IPEndPoint, ClientConnection>();
+        private readonly List<ClientConnection> _clientConnections = new List<ClientConnection>();
+        private Dictionary<IPEndPoint, ClientConnection> _iPEndPointToUnhandledConnections = null;
+        private readonly Dictionary<IPEndPoint, ClientConnection> _iPEndPointToClientConnection = new Dictionary<IPEndPoint, ClientConnection>();
 
         private MemoryStream _instantMessageStream = new MemoryStream();
         //Receive vars
         private MemoryStream _receiveStream = new MemoryStream();
-        private byte[] _buffer = new byte[65536]; //UDP messages can't exceed 65507 bytes so this should always be sufficient
+        private readonly byte[] _buffer = new byte[65536]; //UDP messages can't exceed 65507 bytes so this should always be sufficient
         private EndPoint _sender = new IPEndPoint(IPAddress.Any, 0);
         //State vars
         public int MaxAllowedPlayers { get; } = 0;
         public Dictionary<IPEndPoint, List<NetkraftPlayer>> PlayersForConnection { get; } = new Dictionary<IPEndPoint, List<NetkraftPlayer>>();
         public List<NetkraftPlayer> AllPlayers;
 
-        public Action<RequestJoinResponse> JoinResponseCallback;
-        public Action<RequestJoin, ClientConnection> ClientJoinCallback;
+        public Action<RequestJoinResponse> JoinResponseCallback = null;
+        public Action<RequestJoin, ClientConnection> ClientJoinCallback = null;
 
-        private Random rand = new Random();
-        public int FakeLossProcent = 0;
+        private Random _rand = new Random();
+        public int FakeLossPercentage = 0;
 
         //Constuctor
         public NetkraftClient(int port)
@@ -47,23 +47,23 @@ namespace Netkraft
                 {
                     _iPEndPointToClientConnection[(IPEndPoint)_sender].Receive(_buffer, size);
                 }
-                //Host handeling unhandeled connections
-                else if(_iPEndPointToUnhandeledConnections != null)
+                //Host handling unhandled connections
+                else if(_iPEndPointToUnhandledConnections != null)
                 {
-                    if (!_iPEndPointToUnhandeledConnections.ContainsKey((IPEndPoint)_sender))
+                    lock (_iPEndPointToUnhandledConnections)
                     {
-                        lock (_iPEndPointToUnhandeledConnections)
-                        {
-                            _iPEndPointToUnhandeledConnections.Add((IPEndPoint)_sender, new ClientConnection(this, (IPEndPoint)_sender));
-                        }
+                        if (!_iPEndPointToUnhandledConnections.ContainsKey((IPEndPoint)_sender))
+                            _iPEndPointToUnhandledConnections.Add((IPEndPoint)_sender, new ClientConnection(this, (IPEndPoint)_sender));
+                        
+                        _iPEndPointToUnhandledConnections[(IPEndPoint)_sender].Receive(_buffer, size);
                     }
-                    _iPEndPointToUnhandeledConnections[(IPEndPoint)_sender].Receive(_buffer, size);
+
                 }
             }
         }
         internal void SendStream(MemoryStream stream, int sizeOfStreamToSend, ClientConnection client)
         {
-            if (rand.Next(1, 100) < FakeLossProcent) return;
+            if (_rand.Next(1, 100) < FakeLossPercentage) return;
             _socket.SendTo(stream.GetBuffer(), 0, sizeOfStreamToSend, SocketFlags.None, client.IpEndPoint);
         }
 
@@ -89,7 +89,7 @@ namespace Netkraft
         }
         public void Host()
         {
-            _iPEndPointToUnhandeledConnections = new Dictionary<IPEndPoint, ClientConnection>();
+            _iPEndPointToUnhandledConnections = new Dictionary<IPEndPoint, ClientConnection>();
         }
         public void Join(string ip, int port)
         {
@@ -116,10 +116,10 @@ namespace Netkraft
                 _clientConnections[i].ReceiveTick();
 
             //Unhandeld
-            if (_iPEndPointToUnhandeledConnections == null) return;
-            lock (_iPEndPointToUnhandeledConnections)
+            if (_iPEndPointToUnhandledConnections == null) return;
+            lock (_iPEndPointToUnhandledConnections)
             {
-                foreach (ClientConnection CC in _iPEndPointToUnhandeledConnections.Values)
+                foreach (ClientConnection CC in _iPEndPointToUnhandledConnections.Values)
                     CC.ReceiveTickRestrictive();
             }
         }

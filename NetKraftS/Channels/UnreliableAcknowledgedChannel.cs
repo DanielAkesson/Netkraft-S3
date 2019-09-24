@@ -15,6 +15,7 @@ namespace Netkraft
         private List<UnreliableAcknowledgmentMessage> _AckMessagesToSend = new List<UnreliableAcknowledgmentMessage>();
         private int _currentId = 0;
         private Acknowledger _acker;
+
         public UnreliableAcknowledgedChannel(NetkraftClient masterClient, ClientConnection connection)
         {
             _masterClient = masterClient;
