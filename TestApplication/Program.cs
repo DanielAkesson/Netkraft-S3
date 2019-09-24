@@ -216,7 +216,7 @@ namespace TestApplication
     {
         public string NumArrayDesc;
         public int[] NumArray;
-        public string ToString()
+        public new string ToString()
         {
             string temp = "Name: " + NumArrayDesc + " Numbs: ";
             foreach (int i in NumArray)

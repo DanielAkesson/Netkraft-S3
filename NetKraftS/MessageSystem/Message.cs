@@ -37,7 +37,7 @@ namespace Netkraft.Messaging
         void OnReceive(ClientConnection Context);
     }
     /// <summary>
-    /// Any class or struct that inherits this Interface will automaticlly needs the <see cref="IReliableMessage"/> or <see cref="IUnreliableMessage"/> interface.
+    /// Any class or struct that inherits this Interface has to inherit <see cref="IReliableMessage"/> or <see cref="IUnreliableMessage"/> interface too.
     /// <para>This message will be acknowledged and <see cref="OnAcknowledgment(ClientConnection)"/> will be called once the end-client has recvied the message.</para>
     /// </summary>
     public interface IAcknowledged
