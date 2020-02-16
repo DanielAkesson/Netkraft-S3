@@ -1,11 +1,8 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using Netkraft;
 using Netkraft.Messaging;
-using System.Net;
+using System;
+using System.IO;
+using System.Threading;
 
 namespace TestApplication
 {
@@ -17,7 +14,7 @@ namespace TestApplication
         public static int Recived = 0;
         static void Main(string[] args)
         {
-            TestAllTypes();
+            TestDeltaCompression();
         }
 
         static void TestReliableAcked()
@@ -129,6 +126,26 @@ namespace TestApplication
                 Thread.Sleep(100);
             }
         }
+        static void TestDeltaCompression()
+        {
+            CompressMe obj = new CompressMe() { num1 = 1, num2 = 2, num3 = 3, num4 = 4, str = "hej grabben :)" };
+            CompressMe key = new CompressMe() { num1 = 112, num2 = 3, num3 = 4, num4 = 5, str = "hej grabben" };
+
+            MemoryStream normal = new MemoryStream();
+            WritableSystem.Write(normal, obj);
+            MemoryStream derp = new MemoryStream();
+            WritableSystem.WriteWithDeltaCompress(derp, obj, key);
+            Console.WriteLine("Delta compressed size: " + derp.Position + " Normal merssage size: " + normal.Position);
+            derp.Seek(0, SeekOrigin.Begin);
+            CompressMe newObj = WritableSystem.ReadWithDeltaCompress<CompressMe>(derp, key);
+
+            Console.WriteLine(newObj.num1);
+            Console.WriteLine(newObj.num2);
+            Console.WriteLine(newObj.num3);
+            Console.WriteLine(newObj.num4);
+            Console.WriteLine(newObj.str);
+            Thread.Sleep(1000000000);
+        }
     }
 
     public struct Hello : IReliableMessage, IAcknowledged
@@ -152,8 +169,6 @@ namespace TestApplication
                 + " Num2: " + Num2 + System.Environment.NewLine
                 + " HelloWritableValue: " + HelloWritableValue.ToString());
         }
-
-        public void OnSend(ClientConnection Context){}
     }
 
     public struct SimpleHello : IReliableMessage, IAcknowledged
@@ -210,6 +225,19 @@ namespace TestApplication
         }
     }
 
+    [Writable]
+    public struct CompressMe : IDeltaCompressed
+    {
+        public int num1;
+        public int num2;
+        public int num3;
+        public int num4;
+        public string str;
+        public object DecompressKey()
+        {
+            return null;
+        }
+    }
 
     [Writable]
     public struct HelloWritable
