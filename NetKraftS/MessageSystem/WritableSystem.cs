@@ -223,7 +223,6 @@ namespace Netkraft.Messaging
 
             UInt16 objLength = (UInt16)compressStream1.Position;
             byte[] Mask = new byte[(byte)Math.Ceiling(objLength / 8f)];
-            Console.WriteLine("OG SIZE: " + (UInt16)objLength);
             stream.Write(BitConverter.GetBytes((UInt16)objLength), 0, 2); //HEADER
             long MaskPosition = stream.Position;
             stream.Write(Mask, 0, Mask.Length); //Temporary mask
@@ -236,17 +235,10 @@ namespace Netkraft.Messaging
                 int objData = compressStream1.ReadByte();
                 int keyData = compressStream2.ReadByte();
                 byte delta = (byte)(objData ^ keyData);
-                Console.WriteLine("Delta compress: " + objData + " and " + keyData + " Result: " + delta);
                 if (delta == 0)
-                {
-                    Console.WriteLine("SKIP");
-                    continue;
-                }
-                    
+                    continue; 
 
                 Mask[i / 8] |= (byte)(1 << (7-(i % 8)));
-                Console.WriteLine("Current Delta mask: " + Mask[i / 8] + " At index: " + (i/8));
-                Console.WriteLine("Data: " + delta);
                 stream.WriteByte(delta);
             }
 
@@ -263,18 +255,14 @@ namespace Netkraft.Messaging
             compressStream2.Seek(0, SeekOrigin.Begin);
             //Read header
             UInt16 originalMessageSize = (UInt16)BinaryFunctions[typeof(UInt16)].reader(stream);
-            Console.WriteLine(originalMessageSize);
             byte[] mask = new byte[(int)Math.Ceiling(originalMessageSize / 8f)];
             stream.Read(mask, 0, mask.Length);
-            Console.WriteLine(mask);
             //Decompress and write object to compressStream1
             for (int i = 0; i < originalMessageSize; i++)
             {
                 int isCompressed = (mask[(int)(i / 8f)] >> 7 - (i % 8)) & 1;
-                Console.Write(isCompressed);
                 compressStream1.WriteByte(isCompressed == 0 ? (byte)compressStream2.ReadByte() : (byte)(compressStream2.ReadByte() ^ stream.ReadByte()));
             }
-            Console.WriteLine(" ");
             //Read original object from the stream
             compressStream1.Seek(0, SeekOrigin.Begin);
             return Read<T>(compressStream1);

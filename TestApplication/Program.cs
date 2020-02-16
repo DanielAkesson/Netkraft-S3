@@ -128,7 +128,7 @@ namespace TestApplication
         }
         static void TestDeltaCompression()
         {
-            CompressMe obj = new CompressMe() { num1 = 1, num2 = 2, num3 = 3, num4 = 4, str = "hej grabben :)" };
+            CompressMe obj = new CompressMe() { num1 = 1, num2 = 2, num3 = 3, num4 = 4, str = "hej grabben :) BLBÄBLBÄBLBÄBLBÄBLBÄB" };
             CompressMe key = new CompressMe() { num1 = 112, num2 = 3, num3 = 4, num4 = 5, str = "hej grabben" };
 
             MemoryStream normal = new MemoryStream();
