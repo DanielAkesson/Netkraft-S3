@@ -1,7 +1,10 @@
 using Netkraft;
+using Netkraft.ChannelSocket;
 using Netkraft.Messaging;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Threading;
 
 namespace TestApplication
@@ -12,11 +15,11 @@ namespace TestApplication
         public static int Sent = 0;
         public static int Acked = 0;
         public static int Recived = 0;
+        
         static void Main(string[] args)
         {
-            TestDeltaCompression();
+            ChannelSocketStuff();
         }
-
         static void TestReliableAcked()
         {
             NetkraftClient client1 = new NetkraftClient(2001);
@@ -45,6 +48,31 @@ namespace TestApplication
                 Console.WriteLine("Acked Fail: " + (Sent - Acked));
                 Console.ForegroundColor = ConsoleColor.White;
             }
+        }
+        static void ChannelSocketStuff()
+        {
+            ChannelSocket client1 = new ChannelSocket(3000, 100);
+            ChannelSocket client2 = new ChannelSocket(3001, 100);
+            IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3001);
+            byte[] buffer = new byte[1000];
+            Random r = new Random();
+            //Check lists
+            List<int> sentIds = new List<int>();
+            List<int> ackedIds = new List<int>();
+            List<int> received = new List<int>();
+
+            //TEST START!
+            //Client 1
+            //Send one thousand messages with a loss rate of 90%
+            for (int i = 0; i < 1000; i++)
+            {
+                int id = r.Next(9999999);
+                buffer = BitConverter.GetBytes(id);
+                client1.Send(buffer, client2Address, Netkraft.ChannelId2.Reliable, () => { ackedIds.Add(id); });
+            }
+
+            while (true)
+                Thread.Sleep(100);
         }
         static void TestUnreliableAcked()
         {
@@ -126,25 +154,39 @@ namespace TestApplication
                 Thread.Sleep(100);
             }
         }
+        static void TestAllTypesWritebles()
+        {
+            Stream s = new MemoryStream();
+            TestAllTypes thing = new TestAllTypes();
+            WritableSystem.Write(s, thing);
+            s.Seek(0, SeekOrigin.Begin);
+            TestAllTypes thing2 = WritableSystem.Read<TestAllTypes>(s);
+        }
         static void TestDeltaCompression()
         {
-            CompressMe obj = new CompressMe() { num1 = 1, num2 = 2, num3 = 3, num4 = 4, str = "hej grabben :) BLBÄBLBÄBLBÄBLBÄBLBÄB" };
-            CompressMe key = new CompressMe() { num1 = 112, num2 = 3, num3 = 4, num4 = 5, str = "hej grabben" };
+            CompressMe mes1  = new CompressMe{ CompressID = 1, CompressID2 = new integerThing { value = "h" }, num1 = 1, num2 = 2, num3 = 3, num4 = 4, str = "hej grabben :(" };
+            CompressMe mes2 = new CompressMe { CompressID = 98, CompressID2 = new integerThing { value = "h" }, num1 = 112, num2 = 3, num3 = 4, num4 = 5, str = "hej grabben" };
+            CompressMe mes3 = new CompressMe { CompressID = 99, CompressID2 = new integerThing { value = "h" }, num1 = 11222, num2 = 234, num3 = 55, num4 = 234234, str = "" };
+            CompressMe key = new CompressMe  { CompressID = 100, CompressID2 = new integerThing { value = "h" }, num1 = 1, num2 = 2, num3 = 3, num4 = 4, str = "hej grabben :(" };
 
             MemoryStream normal = new MemoryStream();
-            WritableSystem.Write(normal, obj);
+            WritableSystem.Write(normal, key);
             MemoryStream derp = new MemoryStream();
-            WritableSystem.WriteWithDeltaCompress(derp, obj, key);
-            Console.WriteLine("Delta compressed size: " + derp.Position + " Normal merssage size: " + normal.Position);
-            derp.Seek(0, SeekOrigin.Begin);
-            CompressMe newObj = WritableSystem.ReadWithDeltaCompress<CompressMe>(derp, key);
+            //WritableSystem.WriteDeltaCompress(derp, mes3, key);
+            Console.WriteLine("Delta compressed size: " + derp.Position + " Normal message size: " + normal.Position);
 
-            Console.WriteLine(newObj.num1);
-            Console.WriteLine(newObj.num2);
-            Console.WriteLine(newObj.num3);
-            Console.WriteLine(newObj.num4);
-            Console.WriteLine(newObj.str);
-            Thread.Sleep(1000000000);
+            //Read and decompress
+            key.CompressID = 100;
+            derp.Seek(0, SeekOrigin.Begin);
+            //CompressMe newObj = WritableSystem.ReadDeltaCompress<CompressMe>(derp, key);
+            CompressMe newObj2 = WritableSystem.Read<CompressMe>(derp);
+            Console.WriteLine(newObj2.CompressID);
+            Console.WriteLine(newObj2.num1);
+            Console.WriteLine(newObj2.num2);
+            Console.WriteLine(newObj2.num3);
+            Console.WriteLine(newObj2.num4);
+            Console.WriteLine(newObj2.str);
+            Console.ReadLine();
         }
     }
 
@@ -201,6 +243,11 @@ namespace TestApplication
         }
     }
 
+    public struct arrayWritable : IWritable
+    {
+        public string NumArrayDesc;
+        public int[] NumArray;
+    }
     public class TestAllTypes : IUnreliableMessage
     {
         public int intvar = -1;
@@ -218,29 +265,38 @@ namespace TestApplication
             NumArrayDesc = "5 Elements",
             NumArray = new int[] { 1, 2, 3, 4, 5 }
         };
+        public arrayWritable[] arrayOfStructs = new arrayWritable[] {
+            new arrayWritable{ NumArray = new int[] { 1,2,3}, NumArrayDesc = "hej 123" },
+            new arrayWritable{ NumArray = new int[] { 1,2,3}, NumArrayDesc = "hej 123" },
+            new arrayWritable{ NumArray = new int[] { 1,2,3}, NumArrayDesc = "hej 123" },
+            new arrayWritable{ NumArray = new int[] { 1,2,3}, NumArrayDesc = "hej 123" },
+            new arrayWritable{ NumArray = new int[] { 1,2,3}, NumArrayDesc = "hej 123" }
+        };
 
         public void OnReceive(ClientConnection Context)
         {
             Console.WriteLine($"Succes: {intvar}, {uintvar}, {shortvar}, {ushortvar}, {longvar}, {ulongvar}, {bytevar}, {singelvar}, {doublevar}, {stringvar}");
+            Console.WriteLine($"Succes: {arrayOfStructs[0].NumArray[0]}, {arrayOfStructs[0].NumArray[1]}, {arrayOfStructs[0].NumArray[2]}, {arrayOfStructs[0].NumArrayDesc}");
         }
     }
 
-    [Writable]
-    public struct CompressMe : IDeltaCompressed
+    public struct integerThing : IWritable
     {
+        public string value;
+    }
+    public struct CompressMe : IWritable
+    {
+        [DeltaCompressedField]
+        public int CompressID;
+        [DeltaCompressedField]
+        public integerThing CompressID2;
         public int num1;
         public int num2;
         public int num3;
         public int num4;
         public string str;
-        public object DecompressKey()
-        {
-            return null;
-        }
     }
-
-    [Writable]
-    public struct HelloWritable
+    public struct HelloWritable : IWritable
     {
         public string NumArrayDesc;
         public int[] NumArray;
@@ -252,4 +308,5 @@ namespace TestApplication
             return temp;
         }
     }
+    
 }

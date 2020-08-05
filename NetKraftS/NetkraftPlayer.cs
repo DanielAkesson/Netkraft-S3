@@ -8,7 +8,6 @@ namespace Netkraft
         public int ConnectionId;
         public int PlayerId;
         public bool Disconnected;
-
         public void OnAcknowledgment(ClientConnection Context)
         {
             throw new NotImplementedException();

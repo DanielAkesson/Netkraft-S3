@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 
-namespace NetKraftTest
+namespace NetkraftTest
 {
     [TestClass]
     public class ReliableAckChannelTests

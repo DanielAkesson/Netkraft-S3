@@ -8,17 +8,26 @@ using System.Runtime.Serialization;
 
 namespace Netkraft.Messaging
 {
+    //Interfaces
     /// <summary>
-    /// Any class or struct that inherits this Interface needs to inherit from <see cref="IReliableMessage"/> / <see cref="IUnreliableMessage"/> interfaces or needs the <see cref="Writable"/> attribute.
+    /// Any class or struct that inherits <see cref="IWritable"/> will be supported by the <see cref="WritableSystem"/> and can be read from or writen to a stream.
     /// <para></para>
     /// </summary>
-    public interface IDeltaCompressed
-    {
-        object DecompressKey();
-    }
-
+    public interface IWritable{}
     public static class WritableSystem
     {
+        private struct WritableMetaInformation
+        {
+            public List<FieldMetaInformation> fields;
+            public List<FieldMetaInformation> deltaFields;
+        }
+        private struct FieldMetaInformation
+        {
+            public FieldInfo fieldInfo;
+            public WritableMetaInformation parentWritable;
+            public Action<Stream, object> writeFunction;
+            public Func<Stream, object> readFunction;
+        }
         static WritableSystem()
         {
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
@@ -31,17 +40,13 @@ namespace Netkraft.Messaging
             foreach (Assembly a in assemblies)
                 WritableTypes.AddRange(a.GetTypes().Where(x => TypeIsWritable(x)));
 
-            //Add each writable type as it's own writabletype!
-            foreach (Type t in WritableTypes)
-                AddSuportedType(t, (s, o) => Write(s, o), (Func<Stream, object>)_readReadInternal.MakeGenericMethod(t).CreateDelegate(typeof(Func<Stream, object>)));
-                
             //Do calculations for field members
             foreach (Type t in WritableTypes)
                 AddWritable(t);
         }
         private static bool TypeIsWritable(Type t)
         {
-            return t.GetCustomAttribute(typeof(Writable)) != null 
+            return typeof(IWritable).IsAssignableFrom(t)
                 || typeof(IUnreliableMessage).IsAssignableFrom(t)
                 || typeof(IReliableMessage).IsAssignableFrom(t);
         }
@@ -50,22 +55,22 @@ namespace Netkraft.Messaging
             
             foreach (Assembly a in assemblies)
             {
-                MethodInfo[] WriteMethods = a.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)).Where(m => m.GetCustomAttributes(typeof(WritableFieldTypeWrite), false).Length > 0).ToArray();
-                MethodInfo[] ReadMethods = a.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)).Where(m => m.GetCustomAttributes(typeof(WritableFieldTypeRead), false).Length > 0).ToArray();
+                MethodInfo[] WriteMethods = a.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)).Where(m => m.GetCustomAttributes(typeof(WriteFunction), false).Length > 0).ToArray();
+                MethodInfo[] ReadMethods = a.GetTypes().SelectMany(t => t.GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)).Where(m => m.GetCustomAttributes(typeof(ReadFunction), false).Length > 0).ToArray();
                 //Add types. Find method for same type if not both are declared type is ignored
                 Dictionary<Type, MethodInfo> writeMethodsByType = new Dictionary<Type, MethodInfo>();
                 foreach (MethodInfo wm in WriteMethods)
                 {
-                    Type wt = ((WritableFieldTypeWrite)wm.GetCustomAttribute(typeof(WritableFieldTypeWrite), false)).type;
+                    Type wt = ((WriteFunction)wm.GetCustomAttribute(typeof(WriteFunction), false)).type;
                     if(!writeMethodsByType.ContainsKey(wt))
                         writeMethodsByType.Add(wt, wm);
                 }
 
                 foreach (MethodInfo rm in ReadMethods)
                 {
-                    Type rt = ((WritableFieldTypeRead)rm.GetCustomAttribute(typeof(WritableFieldTypeRead), false)).type;
+                    Type rt = ((ReadFunction)rm.GetCustomAttribute(typeof(ReadFunction), false)).type;
                     if (writeMethodsByType.ContainsKey(rt))
-                        AddSuportedType(rt, (Action<Stream, object>)writeMethodsByType[rt].CreateDelegate(typeof(Action<Stream, object>)), (Func<Stream, object>)rm.CreateDelegate(typeof(Func<Stream, object>)));
+                        AddSuportedField(rt, (Action<Stream, object>)writeMethodsByType[rt].CreateDelegate(typeof(Action<Stream, object>)), (Func<Stream, object>)rm.CreateDelegate(typeof(Func<Stream, object>)));
                 }
 #if DEBUG
                 //Write out warnings and errors
@@ -75,7 +80,7 @@ namespace Netkraft.Messaging
                 //Write function errors
                 foreach (MethodInfo wm in WriteMethods)
                 {
-                    Type wt = ((WritableFieldTypeWrite)wm.GetCustomAttribute(typeof(WritableFieldTypeWrite), false)).type;
+                    Type wt = ((WriteFunction)wm.GetCustomAttribute(typeof(WriteFunction), false)).type;
 
                     //Find errors
                     if(!errorByType.ContainsKey(wt))
@@ -111,7 +116,7 @@ namespace Netkraft.Messaging
                 HashSet<Type> duplicateCheck = new HashSet<Type>();
                 foreach (MethodInfo rm in ReadMethods)
                 {
-                    Type rt = ((WritableFieldTypeRead)rm.GetCustomAttribute(typeof(WritableFieldTypeRead), false)).type;
+                    Type rt = ((ReadFunction)rm.GetCustomAttribute(typeof(ReadFunction), false)).type;
 
                     if(!duplicateCheck.Contains(rt))
                         duplicateCheck.Add(rt);
@@ -140,7 +145,7 @@ namespace Netkraft.Messaging
 
                 foreach (MethodInfo rm in ReadMethods)
                 {
-                    Type rt = ((WritableFieldTypeRead)rm.GetCustomAttribute(typeof(WritableFieldTypeRead), false)).type;
+                    Type rt = ((ReadFunction)rm.GetCustomAttribute(typeof(ReadFunction), false)).type;
                     if (writeMethodsByType.ContainsKey(rt))
                         errorByType.Remove(rt);
                     else
@@ -161,69 +166,188 @@ namespace Netkraft.Messaging
         private static MemoryStream compressStream2 = new MemoryStream();
         //Binary Reader-Writer
         private static readonly int _supportedArrayDimensionDepth = 4;
-        private static Dictionary<Type, (Action<Stream, object> writer, Func<Stream, object> reader)> BinaryFunctions = new Dictionary<Type, (Action<Stream, object> writer, Func<Stream, object> reader)>();
-        private static Dictionary<Type, List<FieldInfo>> MetaInformation = new Dictionary<Type, List<FieldInfo>>();
-        private static Dictionary<Type, Func<Stream, object>> GenericReadFunctions = new Dictionary<Type, Func<Stream, object>>();
-         
+        private static Dictionary<Type, WritableMetaInformation> writables = new Dictionary<Type, WritableMetaInformation>();
+        private static Dictionary<Type, Func<Stream, object>> readerFunctions = new Dictionary<Type, Func<Stream, object>>();
+        private static Dictionary<Type, Action<Stream, object>> writersFunctions = new Dictionary<Type, Action<Stream, object>>();
+        
         //private method infos for generic methods
         private static readonly MethodInfo _writeArrayMetod = typeof(WritableSystem).GetMethod("WriteArray", BindingFlags.Static | BindingFlags.NonPublic);
         private static readonly MethodInfo _readArrayMetod = typeof(WritableSystem).GetMethod("ReadArray", BindingFlags.Static | BindingFlags.NonPublic);
-        private static readonly MethodInfo _readReadInternal = typeof(WritableSystem).GetMethod("ReadInternal", BindingFlags.Static | BindingFlags.NonPublic);
-        
-        //public setting methods
-        public static void AddSuportedType<T>(Action<Stream, object> writerFunction, Func<Stream, object> readerFunction)
-        {
-            AddSuportedType(typeof(T), writerFunction, readerFunction);
-        }
-        public static void AddSuportedType(Type type, Action<Stream, object> writerFunction, Func<Stream, object> readerFunction)
-        {
-            //Console.WriteLine("Add supported type: " + type.Name);
+
+        //Private methods
+        private static void AddSuportedField(Type fieldType, Action<Stream, object> writerFunction, Func<Stream, object> readerFunction) {
+            Console.WriteLine("Add supported type: " + fieldType.Name);
             //Normal type support
-            BinaryFunctions.Add(type, (writerFunction, readerFunction));
+            readerFunctions.Add(fieldType, readerFunction);
+            writersFunctions.Add(fieldType, writerFunction);
             //X dimension array support
-            Type ArrayCarryType = type;
+            Type ArrayCarryType = fieldType;
             Action<Stream, object> writeMultiDelegate;
             Func<Stream, object> readMultiDelegate;
-            for (int i = 0; i< _supportedArrayDimensionDepth; i++)
-            {
+            for (int i = 0; i < _supportedArrayDimensionDepth; i++) {
                 //Standard multi array
-                writeMultiDelegate = (Action<Stream, object>)_writeArrayMetod.MakeGenericMethod(ArrayCarryType).CreateDelegate(typeof(Action<Stream, object>));
                 readMultiDelegate = (Func<Stream, object>)_readArrayMetod.MakeGenericMethod(ArrayCarryType).CreateDelegate(typeof(Func<Stream, object>));
-                BinaryFunctions.Add(ArrayCarryType.MakeArrayType(), (writeMultiDelegate, readMultiDelegate));
+                writeMultiDelegate = (Action<Stream, object>)_writeArrayMetod.MakeGenericMethod(ArrayCarryType).CreateDelegate(typeof(Action<Stream, object>));
                 ArrayCarryType = ArrayCarryType.MakeArrayType();
+                readerFunctions.Add(ArrayCarryType, readMultiDelegate);
+                writersFunctions.Add(ArrayCarryType, writeMultiDelegate);
             }
         }
-        
+        private static void AddWritable(Type writableType) {
+            if (writables.ContainsKey(writableType)) return;
+            //Writable Meta Information
+            WritableMetaInformation writable = new WritableMetaInformation {
+                fields = new List<FieldMetaInformation>(),
+                deltaFields = new List<FieldMetaInformation>()
+            };
+
+            //Fields Meta information
+            foreach(FieldInfo Fi in writableType.GetFields().Where(x => ValidateFieldInfo(x) && x.DeclaringType == writableType).ToList()){
+                FieldMetaInformation fieldMeta = new FieldMetaInformation {
+                    fieldInfo = Fi,
+                    parentWritable = writable,
+                    readFunction = readerFunctions[Fi.FieldType],
+                    writeFunction = writersFunctions[Fi.FieldType]
+                };
+                (Fi.GetCustomAttribute<DeltaCompressedField>() == null ? writable.fields : writable.deltaFields).Add(fieldMeta);
+            }
+            writables.Add(writableType, writable);
+            //Add the writable as it's own supported type!
+            Func<Stream, object> read = (Stream x) => { return ReadInternal(x, writableType); };
+            AddSuportedField(writableType, WriteInternal, read);
+        }
+        private static bool ValidateFieldInfo(FieldInfo info) {
+            SkipIndex attribute = info.GetCustomAttribute<SkipIndex>();
+            Type t = info.FieldType;
+            return attribute == null && !info.IsStatic && readerFunctions.ContainsKey(t) && writersFunctions.ContainsKey(t);
+        }
+
         //Public methods
-        public static object Write(Stream stream, object obj)
-        {
-            try
-            {
-                List<FieldInfo> metaData = MetaInformation[obj.GetType()];
-                foreach (FieldInfo fi in metaData)
-                    BinaryFunctions[fi.FieldType].writer(stream, fi.GetValue(obj));
+        public static void Write(Stream stream, object obj) {
+            writersFunctions[obj.GetType()](stream, obj);
+        }
+        public static T Read<T>(Stream stream) {
+            return (T)readerFunctions[typeof(T)](stream);
+        }
+        public static object Read(Stream stream, Type writableType) {
+            return readerFunctions[writableType](stream);
+        }
+
+        //I dono bud ▼
+        public static T ReadDeltaCompress<T>(Stream stream, object key) {
+            //Read the object raw to infear key elements
+            compressStream1.Seek(0, SeekOrigin.Begin);
+            compressStream2.Seek(0, SeekOrigin.Begin);
+            //Write key delta fields
+            foreach (FieldMetaInformation fmi in writables[key.GetType()].deltaFields)
+                fmi.writeFunction(compressStream2, fmi.fieldInfo.GetValue(key));
+            compressStream2.Seek(0, SeekOrigin.Begin);
+            //Read header
+            short originalMessageSize = (short)readerFunctions[typeof(short)](stream);
+            byte[] mask = new byte[(int)Math.Ceiling(originalMessageSize / 8f)];
+            stream.Read(mask, 0, mask.Length);
+            //Decompress and write object to compressStream1
+            for (int i = 0; i < originalMessageSize; i++) {
+                int isCompressed = (mask[(int)(i / 8f)] >> 7 - (i % 8)) & 1;
+                compressStream1.WriteByte(isCompressed == 0 ? (byte)compressStream2.ReadByte() : (byte)(compressStream2.ReadByte() ^ stream.ReadByte()));
+            }
+            //Read original object from the stream
+            compressStream1.Seek(0, SeekOrigin.Begin);
+            object data = FormatterServices.GetUninitializedObject(key.GetType());
+                foreach (FieldMetaInformation fmi in writables[key.GetType()].fields)
+                    fmi.fieldInfo.SetValue(data, readerFunctions[fmi.fieldInfo.FieldType](stream));
+            return (T)data;
+        }
+        public static void WriteDeltaCompress(Stream stream, object obj, object key) {
+            compressStream1.Seek(0, SeekOrigin.Begin);
+            compressStream2.Seek(0, SeekOrigin.Begin);
+            //Write object delta fields
+            foreach (FieldMetaInformation fmi in writables[obj.GetType()].deltaFields)
+                fmi.writeFunction(compressStream1, fmi.fieldInfo.GetValue(obj));
+            //Write key delta fields
+            foreach (FieldMetaInformation fmi in writables[key.GetType()].deltaFields)
+                fmi.writeFunction(compressStream2, fmi.fieldInfo.GetValue(key));
+
+            //Find the mask length
+            ushort objLength = (ushort)compressStream1.Position;
+            byte[] Mask = new byte[(byte)Math.Ceiling(objLength / 8f)];
+            stream.Write(BitConverter.GetBytes(objLength), 0, 2); //HEADER
+            long MaskPosition = stream.Position;
+            stream.Write(Mask, 0, Mask.Length); //Temporary mask
+
+            //Write all Compressed data:
+            compressStream1.Seek(0, SeekOrigin.Begin);
+            compressStream2.Seek(0, SeekOrigin.Begin);
+            for (int i = 0; i < objLength; i++) {
+                int objData = compressStream1.ReadByte();
+                int keyData = compressStream2.ReadByte();
+                byte delta = (byte)(objData ^ keyData);
+                if (delta == 0)
+                    continue;
+
+                Mask[i / 8] |= (byte)(1 << (7 - (i % 8)));
+                stream.WriteByte(delta);
+            }
+
+            //Re-write the mask into the stream
+            stream.Seek(MaskPosition, SeekOrigin.Begin);
+            stream.Write(Mask, 0, Mask.Length);
+        }
+        //Method info functions
+        /// <summary>
+        /// Read internal describes how a Writable object can be read. 
+        /// <p>This function is never actually called but instead is used in system reflection so that the actual writable types can be added as a supported type of its own.</p>
+        /// <p>This function is essentially the same as <see cref="ReadFunction"/> but generic and meant for all <see cref="IWritable"/></p>
+        /// </summary>
+        private static object ReadInternal(Stream stream, Type type) {
+            object data = FormatterServices.GetUninitializedObject(type);
+            try{
+                foreach (FieldMetaInformation fmi in writables[type].fields)
+                    fmi.fieldInfo.SetValue(data, readerFunctions[fmi.fieldInfo.FieldType](stream));
+            }
+            catch (Exception e) { throw e; }
+            return data;
+        }
+        //This is the same as above however specificlly for arrays
+        private static object ReadArray<T>(Stream stream) {
+            int length = (int)readerFunctions[typeof(uint)](stream);
+            T[] array = new T[length];
+            for (int i = 0; i < length; i++)
+                array[i] = (T)readerFunctions[typeof(T)](stream);
+            return array;
+        }
+        /// <summary>
+        /// Write internal describes how a Writable object can be written. 
+        /// <p>This function is never actually called but instead is used in system reflection so that the actual writable types can be added as a supported type of its own.</p>
+        /// <p>This function is essentially the same as <see cref="WriteFunction"/> but generic and meant for all <see cref="IWritable"/></p>
+        /// </summary>
+        private static void WriteInternal(Stream stream, object obj) {
+            try{
+                foreach (FieldMetaInformation fmi in writables[obj.GetType()].fields)
+                    fmi.writeFunction(stream, fmi.fieldInfo.GetValue(obj));
             }
             catch (Exception e) { Console.WriteLine(e.StackTrace); throw e; }
-            return obj;
+         }
+        //This is the same as above however specificlly for arrays
+        private static void WriteArray<T>(Stream stream, object value) {
+            T[] array = (T[])value;
+            writersFunctions[typeof(uint)](stream, array.Length);
+            for (int i = 0; i < array.Length; i++)
+                writersFunctions[typeof(T)](stream, array[i]);
         }
-        public static T Read<T>(Stream stream)
-        {
-            return (T)ReadInternal<T>(stream);
-        }
-        public static object Read(Stream stream, Type writableType)
-        {
-            return GenericReadFunctions[writableType](stream);
-        }
-        public static object WriteWithDeltaCompress(Stream stream, object obj, object key)
+
+        //TODO: Clean this mess ▼
+        /*
+        private static void WriteDeltaCompressInternal(Stream stream, object obj, object key)
         {
             compressStream1.Seek(0, SeekOrigin.Begin);
             compressStream2.Seek(0, SeekOrigin.Begin);
             Write(compressStream1, obj);
             Write(compressStream2, key);
 
-            UInt16 objLength = (UInt16)compressStream1.Position;
+            ushort objLength = (ushort)compressStream1.Position;
             byte[] Mask = new byte[(byte)Math.Ceiling(objLength / 8f)];
-            stream.Write(BitConverter.GetBytes((UInt16)objLength), 0, 2); //HEADER
+            stream.Write(BitConverter.GetBytes(objLength), 0, 2); //HEADER
             long MaskPosition = stream.Position;
             stream.Write(Mask, 0, Mask.Length); //Temporary mask
 
@@ -236,123 +360,64 @@ namespace Netkraft.Messaging
                 int keyData = compressStream2.ReadByte();
                 byte delta = (byte)(objData ^ keyData);
                 if (delta == 0)
-                    continue; 
+                    continue;
 
-                Mask[i / 8] |= (byte)(1 << (7-(i % 8)));
+                Mask[i / 8] |= (byte)(1 << (7 - (i % 8)));
                 stream.WriteByte(delta);
             }
 
             //Re-write the mask into the stream
-            stream.Seek(MaskPosition , SeekOrigin.Begin);
+            stream.Seek(MaskPosition, SeekOrigin.Begin);
             stream.Write(Mask, 0, Mask.Length);
+        }
+        //Todo implement so it works without GetDefaulkt in IDeltaCompressed
+        private static object GetNonDeltaFieldsDefault(object obj)
+        {
+            Type t = obj.GetType();
+            foreach (FieldInfo fi in metaInformation[t])
+                if (fi.GetCustomAttribute<DeltaCompressedField>() != null)
+                    fi.SetValue(obj, FormatterServices.GetUninitializedObject(fi.FieldType));
+
             return obj;
         }
-        public static T ReadWithDeltaCompress<T>(Stream stream, object key)
-        {
-            compressStream2.Seek(0, SeekOrigin.Begin);
-            compressStream1.Seek(0, SeekOrigin.Begin);
-            Write(compressStream2, key);
-            compressStream2.Seek(0, SeekOrigin.Begin);
-            //Read header
-            UInt16 originalMessageSize = (UInt16)BinaryFunctions[typeof(UInt16)].reader(stream);
-            byte[] mask = new byte[(int)Math.Ceiling(originalMessageSize / 8f)];
-            stream.Read(mask, 0, mask.Length);
-            //Decompress and write object to compressStream1
-            for (int i = 0; i < originalMessageSize; i++)
-            {
-                int isCompressed = (mask[(int)(i / 8f)] >> 7 - (i % 8)) & 1;
-                compressStream1.WriteByte(isCompressed == 0 ? (byte)compressStream2.ReadByte() : (byte)(compressStream2.ReadByte() ^ stream.ReadByte()));
-            }
-            //Read original object from the stream
-            compressStream1.Seek(0, SeekOrigin.Begin);
-            return Read<T>(compressStream1);
-        }
-
-        //Private methods
-        private static object ReadInternal<T>(Stream stream)
-        {
-            object data = FormatterServices.GetUninitializedObject(typeof(T));
-            try
-            {
-                List<FieldInfo> metaData = MetaInformation[typeof(T)];
-                foreach (FieldInfo fi in metaData)
-                    fi.SetValue(data, BinaryFunctions[fi.FieldType].reader(stream));
-            }
-            catch (Exception e) { throw e; }
-            return (T)data;
-        }
-        private static void AddWritable(Type writableType)
-        {
-            if (MetaInformation.ContainsKey(writableType)) return;
-            List<FieldInfo> fields = new List<FieldInfo>();
-            fields.AddRange(writableType.GetFields().Where(x => ValidateFieldInfo(x) && x.DeclaringType == writableType).ToList());
-            MetaInformation.Add(writableType, fields);
-            GenericReadFunctions.Add(writableType, (Func<Stream, object>)_readReadInternal.MakeGenericMethod(writableType).CreateDelegate(typeof(Func<Stream, object>)));
-        }
-        private static bool ValidateFieldInfo(FieldInfo info)
-        {
-            SkipIndex attribute = info.GetCustomAttribute<SkipIndex>();
-            Type t = info.FieldType;
-            return attribute == null && !info.IsStatic && BinaryFunctions.ContainsKey(t);
-        }
-        private static void WriteArray<T>(Stream stream, object value)
-        {
-            T[] array = (T[])value;
-            BinaryWriter writer = new BinaryWriter(stream); //TODO: use bitconverter
-            writer.Write((uint)array.Length);//Place header for array length
-            for (int i=0; i< array.Length; i++)
-                BinaryFunctions[typeof(T)].writer(stream, array[i]);
-        }
-        private static object ReadArray<T>(Stream stream)
-        {
-            BinaryReader reader = new BinaryReader(stream); //TODO: use bitcovnerter
-            uint length = reader.ReadUInt32();//Read header for array length
-            T[] array = new T[length];
-            for (int i = 0; i < length; i++)
-                array[i] = (T)BinaryFunctions[typeof(T)].reader(stream);
-            return array;
-        }   
+        */
     }
+    
     //Attributes
     /// <summary>
-    /// If added to a class or struct all public fields will be writable to a byte array by <see cref="WritableSystem"/>
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, AllowMultiple = true)]
-    public class Writable : Attribute { }
-    /// <summary>
-    /// If added above a field inside a <see cref="Writable"/> or <see cref="Message"/> Inteface said field will not be included when sent by <see cref="NetkraftClient"/> or writen to byte array by <see cref="WritableSystem"/>.
+    /// If added to a field inside a <see cref="IWritable"/> or Message Inteface said field will not be included when sent by <see cref="NetkraftClient"/> or writen to byte array by <see cref="WritableSystem"/>.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
     public class SkipIndex : Attribute{}
     /// <summary>
-    /// This attributes describes where delta compression will start in a Message or Writable hat inherits from <see cref="IDeltaCompressed"/>.
+    /// This attributes describes where delta compression will start in a Message or Writable that inherits from <see cref="IDeltaCompressed"/>.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
-    public class DeltaCompress : Attribute { }
+    public class DeltaCompressedField : Attribute { }
     /// <summary>
-    /// Assign a method to write an object of <see cref="Type"/> to a <see cref="Stream"/>. 
-    /// <see cref="WritableFieldTypeWrite"/> can only be applied to methods that are public and take the parameters <see cref="Stream"/> and <see cref="object"/>. 
-    /// The method should return Void.
+    /// Add to any field in a <see cref="IDeltaCompressed"/> struct or class to ignore this field when delta compressing./>. 
+    /// <p>This field will be read before calling <see cref="IDeltaCompressed.DecompressKeyRead"/> so only values that has this attribute can be trusted to derive what key is accompanied with this writable.</p>
+    /// <p>This is mainly used to allow ids and key identifiers so that the receiving client or server can open the delta compressed messages.</p> 
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-    public class WritableFieldTypeWrite : Attribute
+    public class WriteFunction : Attribute
     {
         public Type type;
-        public WritableFieldTypeWrite(Type type)
+        public WriteFunction(Type type)
         {
             this.type = type;
         }
     }
     /// <summary>
     /// Assign a method to read an object of <see cref="Type"/> from a <see cref="Stream"/>. 
-    /// <see cref="WritableFieldTypeRead"/> can only be applied to methods that are public and take the parameters <see cref="Stream"/>. 
+    /// <see cref="ReadFunction"/> can only be applied to methods that are public and take the parameters <see cref="Stream"/>. 
     /// The method should return the <see cref="object"/> read from the stream
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-    public class WritableFieldTypeRead : Attribute
+    public class ReadFunction : Attribute
     {
         public Type type;
-        public WritableFieldTypeRead(Type type)
+        public ReadFunction(Type type)
         {
             this.type = type;
         }

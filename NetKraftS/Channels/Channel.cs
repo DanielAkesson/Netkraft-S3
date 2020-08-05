@@ -1,5 +1,4 @@
-﻿using Netkraft;
-namespace NetKraft
+﻿namespace Netkraft
 {
     public abstract class Channel
     {

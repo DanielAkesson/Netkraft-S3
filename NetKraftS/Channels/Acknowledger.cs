@@ -33,7 +33,7 @@ namespace Netkraft
             if (delta > 0)
             {
                 _largestReceivedId = id;
-                //Remove all values in recive mask 32 above this new largest id.
+                //Remove all values in receive mask 32 above this new largest id.
                 for (int i = 0; i < 32; i++)
                     SetMask(ref _receivedMask, (id + i), false);
             }
