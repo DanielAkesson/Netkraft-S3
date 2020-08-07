@@ -4,7 +4,7 @@ using System.Net;
 
 namespace Netkraft
 {
-    public abstract class Channel2
+    public abstract class Channel
     {
         public abstract void Send(byte[] buffer, IPEndPoint to, Action onAcknowledge);
         public abstract void Deliver(byte[] buffer, int size, IPEndPoint from);

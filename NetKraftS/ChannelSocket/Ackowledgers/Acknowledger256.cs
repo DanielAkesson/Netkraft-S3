@@ -29,10 +29,14 @@ namespace Netkraft
             if (delta > 0)
             {
                 _largestReceivedId = id;
-                //Remove all values in receive mask 16 above this new largest id.
-                //TODO: This can be improved by using shifting to remove the bits instead of a for loop!
-                for (int i = 0; i < 128; i++)
-                    SetMask(ref _receivedMask, (id + i), false);
+
+                //cx000ccc
+                //x000cccc
+                //0000x000
+                //Remove all values in receive mask 128 above this new largest id.
+                _receivedMask = LeftBitwiseRotation(_receivedMask, 255-id);
+                _receivedMask = _receivedMask >> 128;
+                _receivedMask = RightBitwiseRotation(_receivedMask, (127+256-id)%256);
             }
             SetMask(ref _receivedMask, id, true);
         }
@@ -43,16 +47,49 @@ namespace Netkraft
                 int messageID = (id - i + 256) % 256;
                 if (((mask >> (15 - i)) & 1) == 1 && MaskIsTrue(_aliveMask, messageID))
                 {
-                    Console.WriteLine("Ack: " + messageID);
                     _onAcknowledged?.Invoke(messageID);
                     SetMask(ref _aliveMask, messageID, false);
                 }
             }
         }
-        public ushort GetReceiveMaskForId(int id)
+        public void OnReceiveAcknowledgement(uint mask, int id)
+        {
+            for (int i = 0; i < 32; i++)
+            {
+                int messageID = (id - i + 256) % 256;
+                if (((mask >> (31 - i)) & 1) == 1 && MaskIsTrue(_aliveMask, messageID))
+                {
+                    _onAcknowledged?.Invoke(messageID);
+                    SetMask(ref _aliveMask, messageID, false);
+                }
+            }
+        }
+        public void OnReceiveAcknowledgement(ulong mask, int id)
+        {
+            for (int i = 0; i < 64; i++)
+            {
+                int messageID = (id - i + 256) % 256;
+                if (((mask >> (63 - i)) & 1) == 1 && MaskIsTrue(_aliveMask, messageID))
+                {
+                    _onAcknowledged?.Invoke(messageID);
+                    SetMask(ref _aliveMask, messageID, false);
+                }
+            }
+        }
+        public ushort GetShortReceiveMaskForId(int id)
         {
             //15 beacuse we want our id to be at the 15th position before the cut to ushort happen.
             return (ushort)LeftBitwiseRotation(_receivedMask, 15 - id);
+        }
+        public uint GetIntReceiveMaskForId(int id)
+        {
+            //31 beacuse we want our id to be at the 31th position before the cut to uint happen.
+            return (uint)LeftBitwiseRotation(_receivedMask, 31 - id);
+        }
+        public ulong GetLongReceiveMaskForId(int id)
+        {
+            //63 beacuse we want our id to be at the 63th position before the cut to u´long happen.
+            return (ulong)LeftBitwiseRotation(_receivedMask, 63 - id);
         }
         public bool MessageHasBeenReceived(int id)
         {
@@ -61,6 +98,15 @@ namespace Netkraft
         public bool MessageisAlive(int id)
         {
             return MaskIsTrue(_aliveMask, id % 256);
+        }
+        public bool RangeisAlive(int startId, int rangeInlongs)
+        {
+            Uint256 temp = RightBitwiseRotation(_aliveMask, startId);
+            bool result = temp.Longs()[0] != 0 && rangeInlongs > 0;         //1
+            result = temp.Longs()[1] != 0 && rangeInlongs > 1 || result;    //2
+            result = temp.Longs()[2] != 0 && rangeInlongs > 2 || result;    //3
+            result = temp.Longs()[3] != 0 && rangeInlongs > 3 || result;    //4
+            return result;
         }
         //Mask operations
         private Uint256 RightBitwiseRotation(Uint256 mask, int amount)

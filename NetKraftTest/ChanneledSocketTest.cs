@@ -14,9 +14,9 @@ namespace NetkraftTest
         [TestMethod]
         public void SimpleSendReliableChannel()
         {
-            ChannelSocket client1 = new ChannelSocket(3002, 100, 0.5f);
-            ChannelSocket client2 = new ChannelSocket(3003, 100, 0.5f);
-            IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3003);
+            ChannelSocket client1 = new ChannelSocket(3000, 100, 0.5f);
+            ChannelSocket client2 = new ChannelSocket(3001, 100, 0.5f);
+            IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3001);
             byte[] buffer = new byte[1000];
             //Client 1
             //Send one thousand messages with a loss rate of 90%
@@ -39,16 +39,16 @@ namespace NetkraftTest
         [TestMethod]
         public void MultiSendAndAckedReliableChannel()
         {
-            ChannelSocket client1 = new ChannelSocket(3000, 100, 0.5f);
-            ChannelSocket client2 = new ChannelSocket(3001, 100, 0.5f);
-            IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3001);
+            ChannelSocket client1 = new ChannelSocket(3002, 100, 0.5f);
+            ChannelSocket client2 = new ChannelSocket(3003, 100, 0.5f);
+            IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3003);
             byte[] buffer = new byte[1000];
             Random r = new Random();
             //Check lists
             List<int> sentIds = new List<int>();
             List<int> ackedIds = new List<int>();
             List<int> received = new List<int>();
-            int messageAmount = 256;
+            int messageAmount = 500;
             //TEST START!
             //Client 1
             //Send one thousand messages with a loss rate of 90%
@@ -81,14 +81,16 @@ namespace NetkraftTest
             Assert.AreEqual(sentIds.Count, ackedIds.Count);
             Assert.AreEqual(sentIds.Count, received.Count);
 
-            //It was the correct ids
+            //It was the correct data
             while (sentIds.Count > 0)
             {
-                int id = sentIds[0];
-                ackedIds.Remove(id);
-                received.Remove(id);
-                sentIds.Remove(id);
+                int data = sentIds[0];
+                ackedIds.Remove(data);
+                received.Remove(data);
+                sentIds.Remove(data);
             }
+            foreach (int i in received)
+                Console.WriteLine("Received: " + i);
             //ALl has been removed!
             Assert.AreEqual(0, sentIds.Count);
             Assert.AreEqual(0, ackedIds.Count);

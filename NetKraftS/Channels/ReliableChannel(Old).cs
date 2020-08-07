@@ -6,7 +6,8 @@ using System.IO;
 namespace Netkraft
 {
     //Supports both Reliable messages Wand reliable Ackwnoalged messages!
-    class ReliableChannel : Channel
+    [Obsolete]
+    class ReliableChannelOld : ChannelOld
     {
         private MemoryStream _queueMessageStream = new MemoryStream();
         private MemoryStream _receiveStream = new MemoryStream();
@@ -17,7 +18,7 @@ namespace Netkraft
         private int _currentId = 0;
         private Acknowledger _acker;
 
-        public ReliableChannel(NetkraftClient masterClient, ClientConnection connection)
+        public ReliableChannelOld(NetkraftClient masterClient, ClientConnection connection)
         {
             _masterClient = masterClient;
             _connection = connection;
@@ -155,7 +156,7 @@ namespace Netkraft
 
             public void OnReceive(ClientConnection Context)
             {
-                ReliableChannel con = (ReliableChannel)Context.GetMessageChannel(ChannelId.Reliable);
+                ReliableChannelOld con = (ReliableChannelOld)Context.GetMessageChannel(ChannelId.Reliable);
                 con._acker.OnReceiveAcknowledgement(Mask, Id);
             }
         }

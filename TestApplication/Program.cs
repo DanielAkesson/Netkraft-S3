@@ -15,9 +15,17 @@ namespace TestApplication
         public static int Sent = 0;
         public static int Acked = 0;
         public static int Recived = 0;
+        private static SemaphoreSlim mut = new SemaphoreSlim(0);
         
         static void Main(string[] args)
         {
+            mut.Release();
+            mut.Release();
+            
+            mut.Wait();
+            Console.WriteLine("first lock" + mut.CurrentCount);
+            mut.Wait();
+            Console.WriteLine("second lock" + mut.CurrentCount);
             ChannelSocketStuff();
         }
         static void TestReliableAcked()
@@ -51,8 +59,8 @@ namespace TestApplication
         }
         static void ChannelSocketStuff()
         {
-            ChannelSocket client1 = new ChannelSocket(3000, 100);
-            ChannelSocket client2 = new ChannelSocket(3001, 100);
+            ChannelSocket client1 = new ChannelSocket(3000, 100, 1f);
+            ChannelSocket client2 = new ChannelSocket(3001, 100, 1f);
             IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3001);
             byte[] buffer = new byte[1000];
             Random r = new Random();

@@ -8,7 +8,7 @@ namespace Netkraft.ChannelSocket
     public class ChannelSocket
     {
         internal Socket socket;
-        private Channel2[] channels;
+        private Channel[] channels;
         private readonly uint channelMask = 15;   //00001111
         //Receive vars
         private readonly byte[] _buffer = new byte[65536]; //UDP messages can't exceed 65507 bytes so this should always be sufficient
@@ -18,7 +18,7 @@ namespace Netkraft.ChannelSocket
         {
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//Socket that supports IPV4
             socket.Bind(new IPEndPoint(IPAddress.Any, listenPort));
-            channels = new Channel2[] { new UnreliableChannel2(), new UnreliableAcknowledgedChannel2(socket, 100, successRate), new ReliableChannel2(socket, 100, successRate) };
+            channels = new Channel[] { new UnreliableChannel(socket, successRate), new UnreliableAcknowledgedChannel(socket, successRate), new ReliableChannel(socket, 100, successRate) };
             new Thread(ReceiveLoop).Start();
         }
 

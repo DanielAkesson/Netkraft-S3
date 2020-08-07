@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
-using Timer = System.Timers.Timer;
 using System.Threading;
+using Timer = System.Timers.Timer;
 
 namespace Netkraft.ChannelSocket
 {
-    //Supports both Reliable messages and reliable Acknowledged messages!
-    class ReliableChannel2 : Channel2
+    class UnreliableAcknowledgedChannel : Channel
     {
         //Message queues
         private Queue<ReceivedMessage> receiveQueue = new Queue<ReceivedMessage>();
@@ -17,56 +16,37 @@ namespace Netkraft.ChannelSocket
 
         //header and socket stuff
         private Socket sock;
-        private Timer sendTimer = new Timer();
-        private int sendIntervalMS;
+        private SemaphoreSlim receiveLock = new SemaphoreSlim(0);
         private readonly uint channelMask = 15; //00001111
         private readonly uint additionalMask = 240; //11110000
-
         //Test variables
         //TODO: REMOVE THE ARTIFICAIL FAILIURE RATE!
         public double sendSuccessRate = 1f;
         private Random r = new Random();
-        public ReliableChannel2(Socket socket, int sendIntervalMS, float successRate)
+        public UnreliableAcknowledgedChannel(Socket socket, float successRate)
         {
             sendSuccessRate = successRate;
             sock = socket;
-            this.sendIntervalMS = sendIntervalMS;
-            sendTimer.Interval = sendIntervalMS;
-            sendTimer.Elapsed += (x,y) => 
-            {
-                lock (connections)
-                {
-                    //Resend all messages that have not been ackowledged in the masked messages 
-                    foreach (IPEndPoint peeps in connections.Keys)
-                    {
-                        //push messages backed up in the waiting queue to the alive messages!
-                        PushWaitingQueue(peeps);
-                        //Resend all alive messages that have not been acknowledged
-                        for (int i = 0; i < 256; i++)
-                        {
-                            //TODO: REMOVE THE ARTIFICIAL FAILIURE RATE!
-                            if (connections[peeps].acknowledger.MessageisAlive(i) && (r.NextDouble() < sendSuccessRate))
-                                sock.SendTo(connections[peeps].aliveMessages[i].payload, peeps); //Push to socket
-                        }
-                    }
-                }
-            };
-            sendTimer.AutoReset = true;
-            sendTimer.Enabled = true;
         }
         public override void Send(byte[] buffer, IPEndPoint to, Action onAcknowledge)
         {
             AddEndpoint(to);//Will return false if endpoint already exists
-            connections[to].waitingQueue.Enqueue(new SendMessage { payload = buffer, acknowledgeCallback = onAcknowledge });
-            PushWaitingQueue(to);
+            byte id = (byte)(connections[to].currentID % 256);
+            //add the new payload to the alive message array!
+            byte[] payload = AddHeader(buffer, id, 0);
+            connections[to].acknowledger.OnSendMessage(id);//Set up mask
+            connections[to].callbacks[id] = onAcknowledge;
+            connections[to].currentID = (connections[to].currentID + 1) % 256; // increment id
+            if(r.NextDouble() > sendSuccessRate)
+                sock.SendTo(payload, to);
         }
         public override int Receive(out byte[] buffer, out IPEndPoint sender)
         {
             //Block until message reaches queue
-            while(receiveQueue.Count <= 0)
-                Thread.Sleep(sendIntervalMS);
-
-            ReceivedMessage m = receiveQueue.Dequeue();
+            receiveLock.Wait();
+            ReceivedMessage m;
+            lock (receiveQueue)
+                m = receiveQueue.Dequeue();
             buffer = m.buffer;
             sender = m.sender;
             return m.buffer.Length;
@@ -89,20 +69,22 @@ namespace Netkraft.ChannelSocket
                         connections[from].acknowledger.OnReceiveMessage(id);
                         byte[] message = new byte[size];
                         Array.Copy(buffer, message, message.Length);
-                        receiveQueue.Enqueue(new ReceivedMessage { buffer = message, sender = from });
+                        lock(receiveQueue)
+                            receiveQueue.Enqueue(new ReceivedMessage { buffer = message, sender = from });
+                        receiveLock.Release(); // stop blocking the receive method!
                     }
                     //Acknowledge the message.
-                    byte[] receiveMask = BitConverter.GetBytes(connections[from].acknowledger.GetReceiveMaskForId(id));
+                    byte[] receiveMask = BitConverter.GetBytes(connections[from].acknowledger.GetIntReceiveMaskForId(id));
                     byte[] payload = AddHeader(receiveMask, id, 1);
 
-                    //TODO: REMOVE THE ARTIFICAIL FAILIURE RATE!
+                    //TODO: REMOVE THE ARTIFICIAL FAILIURE RATE!
                     if ((r.NextDouble() < sendSuccessRate))
                         sock.SendTo(payload, from); //Push to socket
                     break;
 
                 case 1://Acknowledgement message
                     //We recevied an acknowledgement of a previous message, cool!
-                    ushort mask = BitConverter.ToUInt16(buffer, 2);//2 becuase we ignore the header
+                    uint mask = BitConverter.ToUInt32(buffer, 2);//2 becuase we ignore the header
                     connections[from].acknowledger.OnReceiveAcknowledgement(mask, id);
                     break;
             }
@@ -122,51 +104,25 @@ namespace Netkraft.ChannelSocket
 
             IPEndPoint ip = endPoint;
             Acknowledger256 ack = new Acknowledger256((x) => { AcknowledgementCallback(ip, (byte)x); });
-            SendMessage[] messageArray = new SendMessage[256];
-            for (int i =0;i<256;i++)
-                messageArray[i] = new SendMessage { };
-
-            Connection connection = new Connection{
+            Action[] messageArray = new Action[256];
+            Connection connection = new Connection
+            {
                 currentID = 0,
                 acknowledger = ack,
-                aliveMessages = messageArray,
-                waitingQueue = new Queue<SendMessage>()
             };
             connections.Add(endPoint, connection);
             return true;
         }
-        //TODO optimize the 128 loop away please!
-        private void PushWaitingQueue(IPEndPoint to)
-        {
-            while (connections[to].waitingQueue.Count > 0)
-            {
-                //Can push current? 
-                for(int i=1;i<=128;i++)
-                {
-                    //Check the number of the mask instead and use that to figure out if one of the bits is a one, will run much faster!
-                    if (connections[to].acknowledger.MessageisAlive((connections[to].currentID + i) % 256))
-                        return; // we cant push the current id beacuse it would cause the receiver mask to forget ids that are currenly being resent
-                }
-                SendMessage m = connections[to].waitingQueue.Dequeue();
-                byte id = (byte)(connections[to].currentID % 256);
-                //add the new payload to the alive message array!
-                byte[] buffer = AddHeader(m.payload, id, 0);
-                connections[to].acknowledger.OnSendMessage(id);//Set up mask
-                connections[to].aliveMessages[id].payload = buffer;
-                connections[to].aliveMessages[id].acknowledgeCallback = m.acknowledgeCallback;
-                connections[to].currentID = (connections[to].currentID + 1) % 256; // increment id
-            }
-        }
         private void AcknowledgementCallback(IPEndPoint endpoint, byte id)
         {
-            connections[endpoint].aliveMessages[id].acknowledgeCallback();
+            connections[endpoint].callbacks[id]();
         }
         private byte[] AddHeader(byte[] payload, byte id, byte additional)
         {
             //create a buffer 2 larger then user payload to fit header.
             byte[] buffer = new byte[payload.Length + 2];
             //Adding header to message with Channel in the first two bit, if this message is an ack message in the third bit and ID in the other five.
-            buffer[0] = (byte)( (additional << 4) | ((byte)ChannelId2.Reliable & channelMask) );
+            buffer[0] = (byte)((additional << 4) | (byte)((byte)ChannelId2.UnreliableAcknowledged & channelMask));
             buffer[1] = id;
             payload.CopyTo(buffer, 2); //Copy the user payload into the message buffer
             return buffer;
@@ -176,13 +132,7 @@ namespace Netkraft.ChannelSocket
         {
             public int currentID;
             public Acknowledger256 acknowledger;
-            public SendMessage[] aliveMessages;
-            public Queue<SendMessage> waitingQueue;
-        }
-        struct SendMessage
-        {
-            public Action acknowledgeCallback;
-            public byte[] payload;
+            public Action[] callbacks;
         }
         struct ReceivedMessage
         {

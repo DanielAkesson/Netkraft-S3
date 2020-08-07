@@ -8,6 +8,7 @@ using Netkraft.Messaging;
 
 namespace Netkraft
 {
+    [Obsolete]
     public class NetkraftClient
     {
         private Socket _socket;
@@ -22,8 +23,6 @@ namespace Netkraft
         private EndPoint _sender = new IPEndPoint(IPAddress.Any, 0);
         //State vars
         public int MaxAllowedPlayers { get; } = 0;
-        public Dictionary<IPEndPoint, List<NetkraftPlayer>> PlayersForConnection { get; } = new Dictionary<IPEndPoint, List<NetkraftPlayer>>();
-        public List<NetkraftPlayer> AllPlayers;
 
         public Action<RequestJoinResponse> JoinResponseCallback = null;
         public Action<RequestJoin, ClientConnection> ClientJoinCallback = null;

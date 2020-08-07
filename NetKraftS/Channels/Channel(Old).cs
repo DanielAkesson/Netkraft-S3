@@ -1,6 +1,9 @@
-﻿namespace Netkraft
+﻿using System;
+
+namespace Netkraft
 {
-    public abstract class Channel
+    [Obsolete]
+    public abstract class ChannelOld
     {
         protected NetkraftClient _masterClient;
         protected ClientConnection _connection;

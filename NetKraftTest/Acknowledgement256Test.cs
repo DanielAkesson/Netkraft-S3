@@ -24,11 +24,11 @@ namespace NetkraftTest
             ack.OnReceiveMessage(5);
             ack.OnReceiveMessage(3);
             ack.OnReceiveMessage(9);
-            ushort mask = ack.GetReceiveMaskForId(9);
+            ushort mask = ack.GetShortReceiveMaskForId(9);
             Assert.AreEqual(35392, mask);
         }
         [TestMethod]
-        public void Acked()
+        public void Acked16()
         {
             List<int> acked = new List<int>();
             Acknowledger256 ack = new Acknowledger256((i) => { acked.Add(i); });
@@ -43,7 +43,7 @@ namespace NetkraftTest
             ack.OnReceiveMessage(3);
             ack.OnReceiveMessage(9);
             //He send back his ack mask
-            ushort mask = ack.GetReceiveMaskForId(9);
+            ushort mask = ack.GetShortReceiveMaskForId(9);
             //Lady check if all is acked
             ack.OnReceiveAcknowledgement(mask, 9);
             Assert.IsTrue(acked.Contains(0));
@@ -51,6 +51,43 @@ namespace NetkraftTest
             Assert.IsTrue(acked.Contains(3));
             Assert.IsTrue(acked.Contains(9));
         }
+        [TestMethod]
+        public void Acked32()
+        {
+            List<int> acked = new List<int>();
+            Acknowledger256 ack = new Acknowledger256((i) => { acked.Add(i); });
+            //Lady 1 sends messages
+            ack.OnSendMessage(0);
+            ack.OnSendMessage(5);
+            ack.OnSendMessage(3);
+            ack.OnSendMessage(9);
+            ack.OnSendMessage(15);
+            ack.OnSendMessage(19);
+            ack.OnSendMessage(23);
+            ack.OnSendMessage(30);
+            //Dude 2 receives
+            ack.OnReceiveMessage(0);
+            ack.OnReceiveMessage(5);
+            ack.OnReceiveMessage(3);
+            ack.OnReceiveMessage(9);
+            ack.OnReceiveMessage(15);
+            ack.OnReceiveMessage(19);
+            ack.OnReceiveMessage(23);
+            ack.OnReceiveMessage(30);
+            //He send back his ack mask
+            uint mask = ack.GetIntReceiveMaskForId(30);
+            //Lady check if all is acked
+            ack.OnReceiveAcknowledgement(mask, 30);
+            Assert.IsTrue(acked.Contains(0));
+            Assert.IsTrue(acked.Contains(5));
+            Assert.IsTrue(acked.Contains(3));
+            Assert.IsTrue(acked.Contains(9));
+            Assert.IsTrue(acked.Contains(15));
+            Assert.IsTrue(acked.Contains(19));
+            Assert.IsTrue(acked.Contains(23));
+            Assert.IsTrue(acked.Contains(30));
+        }
+       
         [TestMethod]
         public void RealTestCase()
         {
@@ -77,15 +114,15 @@ namespace NetkraftTest
             DudeAck.OnReceiveMessage(114);
 
             //Dude 2 looses all ack responses except for some
-            ushort mask = DudeAck.GetReceiveMaskForId(9);
+            ushort mask = DudeAck.GetShortReceiveMaskForId(9);
             ladyAck.OnReceiveAcknowledgement(mask, 9);
-            mask = DudeAck.GetReceiveMaskForId(14);
+            mask = DudeAck.GetShortReceiveMaskForId(14);
             ladyAck.OnReceiveAcknowledgement(mask, 14);
-            mask = DudeAck.GetReceiveMaskForId(67);
+            mask = DudeAck.GetShortReceiveMaskForId(67);
             ladyAck.OnReceiveAcknowledgement(mask, 67);
-            mask = DudeAck.GetReceiveMaskForId(100);
+            mask = DudeAck.GetShortReceiveMaskForId(100);
             ladyAck.OnReceiveAcknowledgement(mask, 100);
-            mask = DudeAck.GetReceiveMaskForId(114);
+            mask = DudeAck.GetShortReceiveMaskForId(114);
             ladyAck.OnReceiveAcknowledgement(mask, 114);
 
             //Lady 1 should still see that all these messages has arrived intact and get acknowledgemnets for them.

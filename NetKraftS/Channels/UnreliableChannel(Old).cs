@@ -5,14 +5,15 @@ using System.IO;
 
 namespace Netkraft
 {
-    class UnreliableChannel : Channel
+    [Obsolete]
+    class UnreliableChannelOld : ChannelOld
     {
         private MemoryStream _queueMessageStream = new MemoryStream();
         private MemoryStream _receiveStream = new MemoryStream();
         private int _messagesInReceiveStream = 0;
         private Queue<object> _messageQueue = new Queue<object>();
 
-        public UnreliableChannel(NetkraftClient masterClient, ClientConnection connection)
+        public UnreliableChannelOld(NetkraftClient masterClient, ClientConnection connection)
         {
             _masterClient = masterClient;
             _connection = connection;

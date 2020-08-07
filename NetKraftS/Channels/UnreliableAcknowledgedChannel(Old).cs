@@ -5,7 +5,8 @@ using System.IO;
 
 namespace Netkraft
 {
-    class UnreliableAcknowledgedChannel : Channel
+    [Obsolete]
+    class UnreliableAcknowledgedChannelOld : ChannelOld
     {
         private MemoryStream _queueMessageStream = new MemoryStream();
         private MemoryStream _receiveStream = new MemoryStream();
@@ -15,7 +16,7 @@ namespace Netkraft
         private int _currentId = 0;
         private Acknowledger _acker;
 
-        public UnreliableAcknowledgedChannel(NetkraftClient masterClient, ClientConnection connection)
+        public UnreliableAcknowledgedChannelOld(NetkraftClient masterClient, ClientConnection connection)
         {
             _masterClient = masterClient;
             _connection = connection;
@@ -130,7 +131,7 @@ namespace Netkraft
 
             public void OnReceive(ClientConnection Context)
             {
-                UnreliableAcknowledgedChannel con = (UnreliableAcknowledgedChannel)Context.GetMessageChannel(ChannelId.UnreliableAcknowledged);
+                UnreliableAcknowledgedChannelOld con = (UnreliableAcknowledgedChannelOld)Context.GetMessageChannel(ChannelId.UnreliableAcknowledged);
                 con._acker.OnReceiveAcknowledgement(Mask, Id);
             }
         }

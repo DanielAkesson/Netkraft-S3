@@ -5,24 +5,24 @@ using System.Net;
 
 namespace Netkraft
 {
+    [Obsolete]
     public class ClientConnection
     {
         public NetkraftClient MasterClient;
         public IPEndPoint IpEndPoint;
-        private Dictionary<ChannelId, Channel> _typeToChannel = new Dictionary<ChannelId, Channel>();
-        private List<Channel> _channels = new List<Channel>();
-        private List<NetkraftPlayer> _clientPlayers = new List<NetkraftPlayer>();
+        private Dictionary<ChannelId, ChannelOld> _typeToChannel = new Dictionary<ChannelId, ChannelOld>();
+        private List<ChannelOld> _channels = new List<ChannelOld>();
 
         public ClientConnection(NetkraftClient masterClient, IPEndPoint ipEndPoint)
         {
             MasterClient = masterClient;
             IpEndPoint = ipEndPoint;
-            AddChannel(new UnreliableChannel(masterClient, this), ChannelId.Unreliable);
-            AddChannel(new UnreliableAcknowledgedChannel(masterClient, this), ChannelId.UnreliableAcknowledged);
-            ReliableChannel RC = new ReliableChannel(masterClient, this);
+            AddChannel(new UnreliableChannelOld(masterClient, this), ChannelId.Unreliable);
+            AddChannel(new UnreliableAcknowledgedChannelOld(masterClient, this), ChannelId.UnreliableAcknowledged);
+            ReliableChannelOld RC = new ReliableChannelOld(masterClient, this);
             AddChannel(RC, ChannelId.Reliable);
         }
-        private void AddChannel(Channel channel, ChannelId channelId)
+        private void AddChannel(ChannelOld channel, ChannelId channelId)
         {
             _typeToChannel.Add(channelId, channel);
             _channels.Add(channel);
@@ -38,7 +38,7 @@ namespace Netkraft
         }
         public void SendQueue()
         {
-            foreach (Channel c in _channels)
+            foreach (ChannelOld c in _channels)
                 c.SendQueue();
         }
         //internal
@@ -50,17 +50,17 @@ namespace Netkraft
         }
         internal void ReceiveTick()
         {
-            foreach (Channel c in _channels)
+            foreach (ChannelOld c in _channels)
                 c.ReceiveTick();
         }
         internal void ReceiveTickRestrictive()
         {
-            foreach (Channel c in _channels)
+            foreach (ChannelOld c in _channels)
                 c.ReceiveTickRestrictive();
         }
-        internal Channel GetMessageChannel(object message)
+        internal ChannelOld GetMessageChannel(object message)
         {
-            Channel channel = null;
+            ChannelOld channel = null;
             if (message is IReliableMessage)
                 channel = _typeToChannel[ChannelId.Reliable];
             else if (message is IUnreliableMessage)
@@ -72,7 +72,7 @@ namespace Netkraft
             }
             return channel;
         }
-        internal Channel GetMessageChannel(ChannelId id)
+        internal ChannelOld GetMessageChannel(ChannelId id)
         {
             return _typeToChannel[id];
         }
