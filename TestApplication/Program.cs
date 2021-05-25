@@ -3,6 +3,7 @@ using Netkraft.ChannelSocket;
 using Netkraft.Messaging;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -19,6 +20,8 @@ namespace TestApplication
         
         static void Main(string[] args)
         {
+            TimeTests();
+
             mut.Release();
             mut.Release();
             
@@ -195,6 +198,25 @@ namespace TestApplication
             Console.WriteLine(newObj2.num4);
             Console.WriteLine(newObj2.str);
             Console.ReadLine();
+        }
+        static void TimeTests()
+        {
+            Stopwatch stopWatch = new Stopwatch();
+            MemoryStream s = new MemoryStream();
+            TestAllTypes thing = new TestAllTypes();
+            while (true)
+            {
+                stopWatch.Start();
+                WritableSystem.Write(s, thing);
+                stopWatch.Stop();
+                //Console.WriteLine($"Time to write a TestAllTypes: {stopWatch.ElapsedMilliseconds}");
+                s.Seek(0, SeekOrigin.Begin);
+                stopWatch.Reset();
+                stopWatch.Start();
+                thing = WritableSystem.Read<TestAllTypes>(s);
+                stopWatch.Stop();
+                //Console.WriteLine($"Time to read a TestAllTypes: {stopWatch.ElapsedMilliseconds}");
+            }
         }
     }
 
