@@ -12,15 +12,17 @@ namespace TestApplication
 {
     class Program
     {
+        
 
         public static int Sent = 0;
         public static int Acked = 0;
         public static int Recived = 0;
         private static SemaphoreSlim mut = new SemaphoreSlim(0);
-        
+
+       
         static void Main(string[] args)
         {
-            TimeTests();
+            //TimeTests();
 
             mut.Release();
             mut.Release();
@@ -54,7 +56,7 @@ namespace TestApplication
                 client2.ReceiveTick();
                 Thread.Sleep(10);
                 Console.ForegroundColor = Sent - Recived == 0 ? ConsoleColor.Green : ConsoleColor.Red;
-                Console.WriteLine("Recive Fail: " + (Sent - Recived));
+                Console.WriteLine("Receive Fail: " + (Sent - Recived));
                 Console.ForegroundColor = Sent - Acked == 0 ? ConsoleColor.Green : ConsoleColor.Red;
                 Console.WriteLine("Acked Fail: " + (Sent - Acked));
                 Console.ForegroundColor = ConsoleColor.White;
@@ -62,10 +64,9 @@ namespace TestApplication
         }
         static void ChannelSocketStuff()
         {
-            ChannelSocket client1 = new ChannelSocket(3000, 100, 1f);
-            ChannelSocket client2 = new ChannelSocket(3001, 100, 1f);
-            IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3001);
-            byte[] buffer = new byte[1000];
+            ChannelSocket client1 = new ChannelSocket(3003, 10, .7f);
+            ChannelSocket client2 = new ChannelSocket(3004, 10, .7f);
+            IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3004);
             Random r = new Random();
             //Check lists
             List<int> sentIds = new List<int>();
@@ -74,17 +75,59 @@ namespace TestApplication
 
             //TEST START!
             //Client 1
-            //Send one thousand messages with a loss rate of 90%
-            for (int i = 0; i < 1000; i++)
+            SemaphoreSlim mut = new SemaphoreSlim(2);
+            mut.Wait();
+            new Thread(() =>
             {
-                int id = r.Next(9999999);
-                buffer = BitConverter.GetBytes(id);
-                client1.Send(buffer, client2Address, Netkraft.ChannelId2.Reliable, () => { ackedIds.Add(id); });
-            }
+                byte[] buffer = new byte[1000];
+                //Send one thousand messages with a loss rate of 90%
+                for (int i = 0; i < 1000; i++)
+                {
+                    int id = r.Next(9999999);
+                    Console.WriteLine("send: " + i);
+                    buffer = BitConverter.GetBytes(id);
+                    client1.Send(buffer, client2Address, ChannelId2.Reliable, () => { ackedIds.Add(id); Console.WriteLine("acked: " + id); });
+                    sentIds.Add(id);
+                }
+                mut.Release();
+            }).Start();
+            //Client 2
+            mut.Wait();
+            new Thread(() =>
+            {
+                byte[] buffer = new byte[1000];
+                IPEndPoint endpoint;
+                //receive all the messages%
+                for (int i = 0; i < 1000; i++)
+                {
+                    Console.WriteLine("receive: " + i);
+                    int size = client2.Receive(out buffer, out endpoint, ChannelId2.Reliable);
+                    int id = BitConverter.ToInt32(buffer, 0);
+                    received.Add(id);
+                }
+                mut.Release();
+            }).Start();
+
+            mut.Wait();
+            Console.WriteLine("First Lock released");
+            mut.Wait();
+            Console.WriteLine("Second Lock released");
+            //Tally results
+            Thread.Sleep(1000);
+            Console.WriteLine("Sent: " + sentIds.Count);
+            Console.WriteLine("Received: " + received.Count);
+            Console.WriteLine("Acked: " + ackedIds.Count);
+
+
+            Console.WriteLine($"Acked Fail: " + (sentIds.Count - ackedIds.Count));
+            if (ackedIds.Count == sentIds.Count && received.Count == ackedIds.Count)
+                Console.WriteLine("No loss everything was grand!");
+            
 
             while (true)
                 Thread.Sleep(100);
         }
+
         static void TestUnreliableAcked()
         {
             NetkraftClient client1 = new NetkraftClient(2001);
@@ -209,17 +252,17 @@ namespace TestApplication
                 stopWatch.Start();
                 WritableSystem.Write(s, thing);
                 stopWatch.Stop();
-                //Console.WriteLine($"Time to write a TestAllTypes: {stopWatch.ElapsedMilliseconds}");
+                Console.WriteLine($"Time to write a TestAllTypes: {stopWatch.ElapsedMilliseconds}");
                 s.Seek(0, SeekOrigin.Begin);
                 stopWatch.Reset();
                 stopWatch.Start();
                 thing = WritableSystem.Read<TestAllTypes>(s);
                 stopWatch.Stop();
-                //Console.WriteLine($"Time to read a TestAllTypes: {stopWatch.ElapsedMilliseconds}");
+                Console.WriteLine($"Time to read a TestAllTypes: {stopWatch.ElapsedMilliseconds}");
             }
         }
     }
-
+  
     public struct Hello : IReliableMessage, IAcknowledged
     {
         public string HelloMessage;
