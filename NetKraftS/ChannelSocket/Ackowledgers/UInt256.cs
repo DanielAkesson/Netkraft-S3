@@ -19,7 +19,7 @@ namespace Netkraft
         }
         public Uint256(Uint256 n)
         {
-            //Can be improved with arrat copy
+            //Can be improved with array copy
             data = new ulong[4];
             data[0] = n.data[0];
             data[1] = n.data[1];

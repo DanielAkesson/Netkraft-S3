@@ -19,67 +19,59 @@ namespace Netkraft.Messaging
     {
         static WritableSystem()
         {
-            Console.WriteLine("Initialize writable system");
-            try
+            Trace.WriteLine("Initialize writable system");
+            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            //Scan trough assembly and find all methods with a write or read attribute in the domain.
+            AddAllWritableFieldTypes(assemblies);
+
+            //Get all Writable and IMessage types in the current domain
+            List<Type> WritableTypes = new List<Type>();
+            foreach (Assembly a in assemblies)
+                WritableTypes.AddRange(a.GetTypes().Where(x => TypeIsWritable(x)));
+
+            //Add each writable type as it's own writable type!
+            foreach (Type t in WritableTypes)
+                AddSuportedType(t, (s, o) => WriteObject(s, o), (s) => ReadObject(s, t));
+
+            //Special read and write for Objects
+            object WriteObject(Stream stream, object obj)
             {
-                Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
-
-                //Scan trough assembly and find all methods with a write or read attribute in the domain.
-                AddAllWritableFieldTypes(assemblies);
-
-                //Get all Writable and IMessage types in the current domain
-                List<Type> WritableTypes = new List<Type>();
-                foreach (Assembly a in assemblies)
-                    WritableTypes.AddRange(a.GetTypes().Where(x => TypeIsWritable(x)));
-
-                //Add each writable type as it's own writable type!
-                foreach (Type t in WritableTypes)
-                    AddSuportedType(t, (s, o) => WriteObject(s, o), (s) => ReadObject(s, t));
-
-                //Special read and write for Objects
-                object WriteObject(Stream stream, object obj)
+                try
                 {
-                    try
+                    //obj is a Writable or IMessage type
+                    if (MetaInformation.ContainsKey(obj.GetType()))
                     {
-                        //obj is a Writable or IMessage type
-                        if (MetaInformation.ContainsKey(obj.GetType()))
-                        {
-                            List<FieldInfo> metaData = MetaInformation[obj.GetType()];
-                            foreach (FieldInfo fi in metaData)
-                                BinaryFunctions[fi.FieldType].writer(stream, fi.GetValue(obj));
-                            return obj;
-                        }
+                        List<FieldInfo> metaData = MetaInformation[obj.GetType()];
+                        foreach (FieldInfo fi in metaData)
+                            BinaryFunctions[fi.FieldType].writer(stream, fi.GetValue(obj));
+                        return obj;
                     }
-                    catch (Exception e) { Console.WriteLine(e.StackTrace); throw e; }
-                    return obj;
                 }
-                object ReadObject(Stream stream, Type writableType)
-                {
-                    //TODO: These objects can be initialized on start and reused here!
-                    object data = FormatterServices.GetUninitializedObject(writableType);
-                    try
-                    {
-                        //obj is a Writable or IMessage type
-                        if (MetaInformation.ContainsKey(writableType))
-                        {
-                            List<FieldInfo> metaData = MetaInformation[writableType];
-                            foreach (FieldInfo fi in metaData)
-                                fi.SetValue(data, BinaryFunctions[fi.FieldType].reader(stream));
-                            return data;
-                        }
-                    }
-                    catch (Exception e) { Console.WriteLine(e.StackTrace); throw e; }
-                    return data;
-                }
-
-                //Do calculations for field members
-                foreach (Type t in WritableTypes)
-                    AddWritable(t);
+                catch (Exception e) { Console.WriteLine(e.StackTrace); throw e; }
+                return obj;
             }
-            catch(Exception e)
+            object ReadObject(Stream stream, Type writableType)
             {
-                Console.WriteLine(e.StackTrace);
+                //TODO: These objects can be initialized on start and reused here!
+                object data = FormatterServices.GetUninitializedObject(writableType);
+                try
+                {
+                    //obj is a Writable or IMessage type
+                    if (MetaInformation.ContainsKey(writableType))
+                    {
+                        List<FieldInfo> metaData = MetaInformation[writableType];
+                        foreach (FieldInfo fi in metaData)
+                            fi.SetValue(data, BinaryFunctions[fi.FieldType].reader(stream));
+                        return data;
+                    }
+                }
+                catch (Exception e) { Console.WriteLine(e.StackTrace); throw e; }
+                return data;
             }
+
+            //Do calculations for field members
+            foreach (Type t in WritableTypes)
+                AddWritable(t);
         }
         private static bool TypeIsWritable(Type t)
         {
@@ -108,6 +100,7 @@ namespace Netkraft.Messaging
                         AddSuportedType(rt, (Action<Stream, object>)writeMethodsByType[rt].CreateDelegate(typeof(Action<Stream, object>)), (Func<Stream, object>)rm.CreateDelegate(typeof(Func<Stream, object>)));
                 }
 #if DEBUG
+                Console.WriteLine("Running basic structure tests");
                 //Write out warnings and errors
                 Dictionary<Type, string> errorByType = new Dictionary<Type, string>();
                 List<string> generalErrors = new List<string>();
@@ -122,7 +115,7 @@ namespace Netkraft.Messaging
                         errorByType.Add(wt, $"The Write function for {wt.Name} does not have an opposing Read function!");
                     else
                     {
-                        generalErrors.Add($"Write function for {wt.Name} Has multiple declarations which is illegal");
+                        generalErrors.Add($"Write function for {wt.Name} Has multiple declarations which is not supported");
                         continue;
                     }
 
@@ -186,13 +179,20 @@ namespace Netkraft.Messaging
                     else
                         errorByType.Add(rt, $"The Read function for type {nameof(rt)} does not have an opposing Write function!");
                 }
+
                 //Read out general errors
                 foreach (string s in generalErrors)
+                {
+                    Trace.WriteLine(s);
                     throw new Exception(s);
+                }
 
                 //Read out mismatches
                 foreach (string s in errorByType.Values)
+                {
+                    Trace.WriteLine(s);
                     throw new Exception(s);
+                }
 #endif
             }
         }

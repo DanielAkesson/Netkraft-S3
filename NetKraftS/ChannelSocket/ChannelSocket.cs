@@ -13,7 +13,7 @@ namespace Netkraft.ChannelSocket
         //Receive vars
         private readonly byte[] _buffer = new byte[65536]; //UDP messages can't exceed 65507 bytes so this should always be sufficient
 
-        //Constuctor
+        //Constructor
         public ChannelSocket(int listenPort, int tickRateInMS, float successRate)
         {
             socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);//Socket that supports IPV4

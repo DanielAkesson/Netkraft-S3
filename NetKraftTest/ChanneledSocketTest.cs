@@ -26,9 +26,8 @@ namespace NetkraftTest
 
             //Client 2
             buffer = new byte[1000];
-            IPEndPoint sender;
             //Pull one thousand messages
-            int size = client2.Receive(out buffer, out sender, Netkraft.ChannelId2.Reliable);
+            int size = client2.Receive(out buffer, out IPEndPoint sender, Netkraft.ChannelId2.Reliable);
             data = BitConverter.ToInt32(buffer, 2);
             int hID = buffer[1];
             Console.WriteLine($"received: [size: {size} data: {data} headerID: {hID}]");
@@ -113,9 +112,8 @@ namespace NetkraftTest
 
             //Client 2
             buffer = new byte[1000];
-            IPEndPoint sender;
             //Pull one thousand messages
-            int size = client2.Receive(out buffer, out sender, Netkraft.ChannelId2.Reliable);
+            int size = client2.Receive(out buffer, out IPEndPoint sender, Netkraft.ChannelId2.Reliable);
             data = BitConverter.ToInt32(buffer, 2);
             int hID = buffer[1];
             Console.WriteLine($"received: [size: {size} data: {data} headerID: {hID}]");

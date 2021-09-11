@@ -31,7 +31,8 @@ namespace TestApplication
             Console.WriteLine("first lock" + mut.CurrentCount);
             mut.Wait();
             Console.WriteLine("second lock" + mut.CurrentCount);
-            ChannelSocketStuff();
+            //ChannelSocketStuff();
+            TestAllTypesWritebles();
         }
         static void TestReliableAcked()
         {
@@ -96,12 +97,11 @@ namespace TestApplication
             new Thread(() =>
             {
                 byte[] buffer = new byte[1000];
-                IPEndPoint endpoint;
                 //receive all the messages%
                 for (int i = 0; i < 1000; i++)
                 {
                     Console.WriteLine("receive: " + i);
-                    int size = client2.Receive(out buffer, out endpoint, ChannelId2.Reliable);
+                    int size = client2.Receive(out buffer, out IPEndPoint endpoint, ChannelId2.Reliable);
                     int id = BitConverter.ToInt32(buffer, 0);
                     received.Add(id);
                 }
@@ -127,7 +127,6 @@ namespace TestApplication
             while (true)
                 Thread.Sleep(100);
         }
-
         static void TestUnreliableAcked()
         {
             NetkraftClient client1 = new NetkraftClient(2001);

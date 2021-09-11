@@ -147,7 +147,7 @@ namespace Netkraft
         [WriteFunction(typeof(char))]
         internal static void WriteChar(Stream stream, object value)
         {
-            stream.WriteByte((byte)value);
+            stream.WriteByte(Convert.ToByte((char)value));
         }
         [ReadFunction(typeof(char))]
         internal static object ReadChar(Stream stream)
