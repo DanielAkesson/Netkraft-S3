@@ -257,9 +257,11 @@ namespace NetKraftTest
             //strings
             WritableSystem.Write(stream, "hej");
             WritableSystem.Write(stream, "š↓▲ÿc§π√R╙╟Ä╥E");
+            WritableSystem.Write(stream, 'K');
             stream.Seek(0, SeekOrigin.Begin);
             Assert.AreEqual(WritableSystem.Read<string>(stream), "hej");
             Assert.AreEqual(WritableSystem.Read<string>(stream), "š↓▲ÿc§π√R╙╟Ä╥E");
+            Assert.AreEqual(WritableSystem.Read<char>(stream), 'K');
             stream.Seek(0, SeekOrigin.Begin);
         }
         [TestMethod]
@@ -281,7 +283,7 @@ namespace NetKraftTest
 
         //Custom write functions
         internal static byte[] buffer = new byte[1024];
-        struct Vector3
+        private struct Vector3
         {
             public float x, y, z;
             public override bool Equals(object obj)
@@ -319,8 +321,8 @@ namespace NetKraftTest
             stream.Seek(0, SeekOrigin.Begin);
         }
 
-        //Custom IWritable Structs!
-        struct Construct : IWritable
+        //Custom IWritable structs!
+        private struct Construct : IWritable
         {
             public string a;
             public int b;
@@ -349,10 +351,6 @@ namespace NetKraftTest
                 });
             stream.Seek(0, SeekOrigin.Begin);
             Construct value = WritableSystem.Read<Construct>(stream);
-            System.Diagnostics.Trace.WriteLine(value.a);
-            System.Diagnostics.Trace.WriteLine(value.b);
-            System.Diagnostics.Trace.WriteLine(value.c.x + " " + value.c.y + " " + value.c.z);
-            System.Diagnostics.Trace.WriteLine(value.d);
             Assert.AreEqual(value, 
                 new Construct
                 {
@@ -360,6 +358,34 @@ namespace NetKraftTest
                     b = -1,
                     c = new Vector3 { x = 0.0f, y = -1.0f, z = 1.0f, },
                     d = new int[] { 0, 1, 2, 3 }
+                });
+            stream.Seek(0, SeekOrigin.Begin);
+        }
+
+        //Custom IWritable structs!
+        private class ConstructClass : IWritable
+        {
+            public Vector3 a;
+            public override bool Equals(object obj)
+            {
+                return (obj is ConstructClass) && ((ConstructClass)obj).a.Equals(a);
+            }
+        }
+        [TestMethod]
+        public void Classes()
+        {
+            //strings
+            WritableSystem.Write(stream,
+                new ConstructClass
+                {
+                    a = new Vector3 { x = 0.0f, y = -1.0f, z = 1.0f, },
+                });
+            stream.Seek(0, SeekOrigin.Begin);
+            ConstructClass value = WritableSystem.Read<ConstructClass>(stream);
+            Assert.AreEqual(value,
+                new ConstructClass
+                {
+                    a = new Vector3 { x = 0.0f, y = -1.0f, z = 1.0f, },
                 });
             stream.Seek(0, SeekOrigin.Begin);
         }
