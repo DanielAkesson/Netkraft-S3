@@ -123,7 +123,6 @@ namespace Netkraft
             }
         }
     }
-
     public class RequestJoin : IUnreliableMessage
     {
         public string MacAddress;

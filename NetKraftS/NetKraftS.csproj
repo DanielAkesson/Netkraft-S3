@@ -65,6 +65,7 @@
     <Compile Include="Channels\UnreliableChannel%28Old%29.cs" />
     <Compile Include="ClientConnection.cs" />
     <Compile Include="MessageSystem\Message.cs" />
+    <Compile Include="MessageSystem\StringHasher.cs" />
     <Compile Include="NetkraftClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MessageSystem\WritableSystem.cs" />

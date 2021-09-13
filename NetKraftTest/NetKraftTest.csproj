@@ -52,6 +52,7 @@
   <ItemGroup>
     <Compile Include="Acknowledgement256Test.cs" />
     <Compile Include="Acknowledgement32Test.cs" />
+    <Compile Include="StringHasherTest.cs" />
     <Compile Include="Uint256Test.cs" />
     <Compile Include="ChanneledSocketTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

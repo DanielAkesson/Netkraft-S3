@@ -1,7 +1,10 @@
-﻿using System;
+﻿using NetKraft.Messaging;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Text;
 
 namespace Netkraft.Messaging
 {
@@ -57,9 +60,15 @@ namespace Netkraft.Messaging
 
         static Message()
         {
+            if(MessageHashSettings.HashSeed < 0){MessageHashSettings.HashSeed = 0;}
             Console.WriteLine("Initialize message system");
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
             List<Type> messages = new List<Type>();
+            _typeToMessageID = new Dictionary<Type, ushort>();
+            _IDToMessageType = new Dictionary<ushort, Type>();
+            #if DEBUG
+            List<string> SeedFails = new List<string>();
+            #endif
             foreach (Assembly a in assemblies)
             {
                 foreach (Type t in a.GetTypes())
@@ -71,10 +80,26 @@ namespace Netkraft.Messaging
             }
             foreach (Type t in messages)
             {
-                ushort id = (ushort)_typeToMessageID.Keys.Count; //TODO: make this more reliable since both clients need all messages in the same order.
+                ushort id = StringHasher.HashStringTo16Bit(MessageHashSettings.HashSeed, t.Name);
+                Console.WriteLine($"Hashing {t.Name} to id {id}");
                 _typeToMessageID.Add(t, id);
-                _IDToMessageType.Add(id, t);
+                if (_IDToMessageType.ContainsKey(id))
+                {
+                    #if DEBUG
+                    SeedFails.Add($"The message type {t.Name} and {_IDToMessageType[id].Name} has a hash collision with hash {id}. Please Change the value of MessageHashSettings.HashSeed to something other then {MessageHashSettings.HashSeed}");
+                    #endif
+                }
+
+                else
+                    _IDToMessageType.Add(id, t);
             }
+            #if DEBUG
+            foreach (string s in SeedFails)
+            {
+                Trace.WriteLine(s);
+                throw new Exception(s);
+            }
+            #endif
         }
         //Static public interface!
         /// <summary>
@@ -116,6 +141,24 @@ namespace Netkraft.Messaging
             WritableSystem.Write(_copyStream, message);//Write this message to copyStream.
             _copyStream.Seek(0, SeekOrigin.Begin); //Seek zero.
             return WritableSystem.Read(_copyStream, message.GetType());//Return copy read from stream.
+        }
+    }
+    public static class MessageHashSettings
+    {
+        private static int _hashSeed = -1;
+        public static ushort HashSeed
+        {
+            get { return (ushort)_hashSeed; }
+            set
+            {
+                if(_hashSeed > 0)
+                {
+                    Trace.WriteLine("The MessageHashSettings.HashSeed has to be set before the MessageSystem is used, to avoid reinitialization");
+                    throw new Exception("The MessageHashSettings.HashSeed has to be set before the MessageSystem is used, to avoid reinitialization");
+                }
+                else
+                    _hashSeed = value;
+            }
         }
     }
 }
