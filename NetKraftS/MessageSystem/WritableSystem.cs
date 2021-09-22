@@ -292,7 +292,6 @@ namespace Netkraft.WritableSystem
         }
         private static void AddSuportedType(Type type, Action<Stream, object> writerFunction, Func<Stream, object> readerFunction)
         {
-            Console.WriteLine("Add supported type: " + type.Name);
             //Normal type support
             BinaryFunctions.Add(type, (writerFunction, readerFunction));
             AddHashToType(type);
@@ -306,6 +305,9 @@ namespace Netkraft.WritableSystem
                 AddHashToType(y);
                 t = t.MakeArrayType();
             }
+#if DEBUG
+            Console.WriteLine($"Add supported type: {type.Name} hash: {_typeToHash[type]}" );
+#endif
 
             //Special read and write for Arrays
             object WriteArray(Stream stream, object obj)
