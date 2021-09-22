@@ -1,4 +1,4 @@
-﻿using Netkraft.Messaging;
+﻿using Netkraft.WritableSystem;
 using System.IO;
 using System;
 using System.Text;

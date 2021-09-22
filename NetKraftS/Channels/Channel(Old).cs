@@ -15,7 +15,7 @@ namespace Netkraft
         public abstract void ReceiveTick();
         public abstract void ReceiveTickRestrictive();
     }
-    public enum ChannelId : byte
+    public enum ChannelId2 : byte
     {
         Unreliable = 0, UnreliableAcknowledged = 1, Reliable = 2, ReliableAcknowledged = 3
     }

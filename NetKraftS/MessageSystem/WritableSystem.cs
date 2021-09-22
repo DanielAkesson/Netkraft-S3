@@ -6,19 +6,19 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 
-namespace Netkraft.Messaging
+namespace Netkraft.WritableSystem
 {
     //Interfaces
     /// <summary>
-    /// Any class or struct that inherits <see cref="IWritable"/> will be supported by the <see cref="WritableSystem"/> and can be read from or writen to a stream.
+    /// Any class or struct that inherits <see cref="IWritable"/> will be supported by the <see cref="Writable"/> and can be read from or writen to a stream.
     /// <para></para>
     /// </summary>
     public interface IWritable{}
-    
-    public static class WritableSystem
+    public static class Writable
     {
-        static WritableSystem()
+        static Writable()
         {
+            if (WritableHashSettings.HashSeed < 0) { WritableHashSettings.HashSeed = 0; }
             Trace.WriteLine("Initialize writable system");
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
             //Scan trough assembly and find all methods with a write or read attribute in the domain.
@@ -75,9 +75,7 @@ namespace Netkraft.Messaging
         }
         private static bool TypeIsWritable(Type t)
         {
-            return typeof(IWritable).IsAssignableFrom(t)
-                || typeof(IUnreliableMessage).IsAssignableFrom(t)
-                || typeof(IReliableMessage).IsAssignableFrom(t);
+            return typeof(IWritable).IsAssignableFrom(t);
         }
         private static void AddAllWritableFieldTypes(Assembly[] assemblies)
         {
@@ -100,7 +98,6 @@ namespace Netkraft.Messaging
                         AddSuportedType(rt, (Action<Stream, object>)writeMethodsByType[rt].CreateDelegate(typeof(Action<Stream, object>)), (Func<Stream, object>)rm.CreateDelegate(typeof(Func<Stream, object>)));
                 }
 #if DEBUG
-                Console.WriteLine("Running basic structure tests");
                 //Write out warnings and errors
                 Dictionary<Type, string> errorByType = new Dictionary<Type, string>();
                 List<string> generalErrors = new List<string>();
@@ -170,7 +167,6 @@ namespace Netkraft.Messaging
                         generalErrors.Add($"First parameter of Read function for type {nameof(rt)} has to be of type Stream. Not {nameof(pt)}");
                     }
                 }
-
                 foreach (MethodInfo rm in ReadMethods)
                 {
                     Type rt = ((ReadFunction)rm.GetCustomAttribute(typeof(ReadFunction), false)).type;
@@ -203,18 +199,30 @@ namespace Netkraft.Messaging
         private static readonly int _supportedArrayDimensionDepth = 4;
         private static Dictionary<Type, (Action<Stream, object> writer, Func<Stream, object> reader)> BinaryFunctions = new Dictionary<Type, (Action<Stream, object> writer, Func<Stream, object> reader)>();
         private static Dictionary<Type, List<FieldInfo>> MetaInformation = new Dictionary<Type, List<FieldInfo>>();
-
+        private static Dictionary<Type, ushort> _typeToHash = new Dictionary<Type, ushort>();
+        private static Dictionary<ushort, Type> _hashToType = new Dictionary<ushort, Type>();
         //Public methods
         public static object Write(Stream stream, object obj)
+        {
+            WriteRaw(stream, _typeToHash[obj.GetType()]);
+            BinaryFunctions[obj.GetType()].writer(stream, obj);
+            return obj;
+        }
+        public static object Read(Stream stream)
+        {
+            ushort hash = ReadRaw<ushort>(stream);
+            return ReadRaw(stream, _hashToType[hash]);
+        }
+        public static object WriteRaw(Stream stream, object obj)
         {
             BinaryFunctions[obj.GetType()].writer(stream, obj);
             return obj;
         }
-        public static T Read<T>(Stream stream)
+        public static T ReadRaw<T>(Stream stream)
         {
-            return (T)Read(stream, typeof(T));
+            return (T)ReadRaw(stream, typeof(T));
         }
-        public static object Read(Stream stream, Type writableType)
+        public static object ReadRaw(Stream stream, Type writableType)
         {
             return BinaryFunctions[writableType].reader(stream);
         }
@@ -257,7 +265,7 @@ namespace Netkraft.Messaging
         {
             compressStream2.Seek(0, SeekOrigin.Begin);
             compressStream1.Seek(0, SeekOrigin.Begin);
-            Write(compressStream2, key);
+            WriteRaw(compressStream2, key);
             compressStream2.Seek(0, SeekOrigin.Begin);
             //Read header
             ushort originalMessageSize = (ushort)BinaryFunctions[typeof(ushort)].reader(stream);
@@ -271,7 +279,7 @@ namespace Netkraft.Messaging
             }
             //Read original object from the stream
             compressStream1.Seek(0, SeekOrigin.Begin);
-            return Read<T>(compressStream1);
+            return ReadRaw<T>(compressStream1);
         }
 
         //Private methods
@@ -287,6 +295,7 @@ namespace Netkraft.Messaging
             Console.WriteLine("Add supported type: " + type.Name);
             //Normal type support
             BinaryFunctions.Add(type, (writerFunction, readerFunction));
+            AddHashToType(type);
 
             //Add the array support to the type!
             Type t = type;
@@ -294,6 +303,7 @@ namespace Netkraft.Messaging
             {
                 Type y = t.MakeArrayType();
                 BinaryFunctions.Add(y, ((s, o) => WriteArray(s, o), (s) => ReadArray(s, y)));
+                AddHashToType(y);
                 t = t.MakeArrayType();
             }
 
@@ -336,6 +346,21 @@ namespace Netkraft.Messaging
                 }
                 return data;
             }
+            void AddHashToType(Type typ)
+            {
+                ushort hash = StringHasher.HashStringTo16Bit(WritableHashSettings.HashSeed, typ.Name);
+                _typeToHash.Add(typ, hash);
+                if (!_hashToType.ContainsKey(hash))
+                    _hashToType.Add(hash, typ);
+                else
+                {
+#if DEBUG
+                    string message = $"The message type {typ.Name} and {_hashToType[hash].Name} has a hash collision with hash {hash}. Please Change the value of WritableHashSettings.HashSeed to something other then {WritableHashSettings.HashSeed}";
+                    Trace.WriteLine(message);
+                    throw new Exception(message);
+#endif
+                }
+            }
         }
         private static bool ValidateFieldInfo(FieldInfo info)
         {
@@ -344,10 +369,27 @@ namespace Netkraft.Messaging
             return attribute == null && !info.IsStatic && BinaryFunctions.ContainsKey(t);
         }
     }
-
+    public static class WritableHashSettings
+    {
+        private static int _hashSeed = -1;
+        public static ushort HashSeed
+        {
+            get { return (ushort)_hashSeed; }
+            set
+            {
+                if (_hashSeed > 0)
+                {
+                    Trace.WriteLine("The MessageHashSettings.HashSeed has to be set before the MessageSystem is used, to avoid reinitialization");
+                    throw new Exception("The MessageHashSettings.HashSeed has to be set before the MessageSystem is used, to avoid reinitialization");
+                }
+                else
+                    _hashSeed = value;
+            }
+        }
+    }
     //Attributes
     /// <summary>
-    /// If added above a field inside a <see cref="Writable"/> or <see cref="Message"/> Interface said field will not be included when sent by <see cref="NetkraftClient"/> or writen to byte array by <see cref="WritableSystem"/>.
+    /// If added above a field inside a <see cref="Writable"/> or <see cref="Message"/> Interface said field will not be included when sent by <see cref="NetkraftClient"/> or writen to byte array by <see cref="Writable"/>.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
     public class SkipIndex : Attribute { }

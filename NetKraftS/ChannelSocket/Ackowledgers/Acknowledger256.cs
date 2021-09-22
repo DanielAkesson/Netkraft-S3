@@ -6,9 +6,9 @@ namespace Netkraft
 {
     public class Acknowledger256
     {
-        //A mask of all messages sent from this client that are waiting acknowledgement
-        private Uint256 _aliveMask = new Uint256(0);
-        // A mask of all messages received by coupled client This is reset 16 id infront of the bigest received so far
+        //A mask of all messages sent from this client that are waiting acknowledgment
+        public Uint256 _aliveMask = new Uint256(0);
+        // A mask of all messages received by coupled client This is reset 16 id in front of the biggest received so far
         private Uint256 _receivedMask = new Uint256(0);
         private int _largestReceivedId;
         private Action<int> _onAcknowledged;
@@ -78,17 +78,17 @@ namespace Netkraft
         }
         public ushort GetShortReceiveMaskForId(int id)
         {
-            //15 beacuse we want our id to be at the 15th position before the cut to ushort happen.
+            //15 because we want our id to be at the 15th position before the cut to ushort happen.
             return (ushort)LeftBitwiseRotation(_receivedMask, 15 - id);
         }
         public uint GetIntReceiveMaskForId(int id)
         {
-            //31 beacuse we want our id to be at the 31th position before the cut to uint happen.
+            //31 because we want our id to be at the 31th position before the cut to uint happen.
             return (uint)LeftBitwiseRotation(_receivedMask, 31 - id);
         }
         public ulong GetLongReceiveMaskForId(int id)
         {
-            //63 beacuse we want our id to be at the 63th position before the cut to u´long happen.
+            //63 because we want our id to be at the 63th position before the cut to ulong happen.
             return (ulong)LeftBitwiseRotation(_receivedMask, 63 - id);
         }
         public bool MessageHasBeenReceived(int id)
@@ -97,7 +97,7 @@ namespace Netkraft
         }
         public bool MessageisAlive(int id)
         {
-            return MaskIsTrue(_aliveMask, id % 256);
+            return MaskIsTrue(_aliveMask, id);
         }
         public bool RangeisAlive(int startId, int rangeInlongs)
         {
@@ -126,6 +126,23 @@ namespace Netkraft
         {
             int Idc = ((id + 256) % 256);
             return ((mask >> Idc) & new Uint256(1)) == 1;
+        }
+
+        public override string ToString()
+        {
+            string aliveMaskString =
+                Convert.ToString((long)_aliveMask.Longs()[3], 2).PadLeft(32, '0') + " " +
+                Convert.ToString((long)_aliveMask.Longs()[2], 2).PadLeft(32, '0') + " " +
+                Convert.ToString((long)_aliveMask.Longs()[1], 2).PadLeft(32, '0') + " " +
+                Convert.ToString((long)_aliveMask.Longs()[0], 2).PadLeft(32, '0');
+
+            string receivedMaskString =
+                Convert.ToString((long)_receivedMask.Longs()[3], 2).PadLeft(32, '0') + " " +
+                Convert.ToString((long)_receivedMask.Longs()[2], 2).PadLeft(32, '0') + " " +
+                Convert.ToString((long)_receivedMask.Longs()[1], 2).PadLeft(32, '0') + " " +
+                Convert.ToString((long)_receivedMask.Longs()[0], 2).PadLeft(32, '0');
+
+            return $"\nAlive mask:   {aliveMaskString} \nReceive mask: {receivedMaskString}\n";
         }
     }
 }

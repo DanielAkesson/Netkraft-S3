@@ -1,10 +1,10 @@
 ﻿using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
-using NetKraft.Messaging;
 using System.Text;
+using Netkraft.WritableSystem;
 
-namespace NetKraftTest
+namespace NetkraftTest
 {
     [TestClass]
     public class StringHasherTest

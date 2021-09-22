@@ -1,4 +1,4 @@
-﻿namespace NetKraft.Messaging
+﻿namespace Netkraft.WritableSystem
 {
     public static class StringHasher
     {

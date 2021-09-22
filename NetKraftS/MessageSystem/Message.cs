@@ -1,10 +1,9 @@
-﻿using NetKraft.Messaging;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
-using System.Text;
+using Netkraft.WritableSystem;
 
 namespace Netkraft.Messaging
 {
@@ -13,7 +12,7 @@ namespace Netkraft.Messaging
     /// Any class or struct that inherits this Interface will automatically have the <see cref="Writable"/> attribute and can be sent between <see cref="NetkraftClient"/>'s.
     /// <para>This message type is not guaranteed to be delivered to end-client</para>
     /// </summary>
-    public interface IUnreliableMessage
+    public interface IUnreliableMessage : IWritable
     {
         /// <summary>
         /// This is a callback method for when a message is read from a <see cref="NetkraftClient"/>.
@@ -28,7 +27,7 @@ namespace Netkraft.Messaging
     /// <para>This message type is guaranteed to be delivered to end-client and will therefore be resent until acknowledgment is confirmed.</para>
     /// <remarks>Note: This message is not slower then <see cref="IUnreliableMessage"/> however, it's resent multiple times and should be avoided if the amount of data sent is a concern</remarks>
     /// </summary>
-    public interface IReliableMessage
+    public interface IReliableMessage : IWritable
     {
         /// <summary>
         /// This is a callback method for when a message is read from a NetkraftClient.
@@ -54,21 +53,14 @@ namespace Netkraft.Messaging
     }
     public static class Message
     {
-        private static Dictionary<Type, ushort> _typeToMessageID = new Dictionary<Type, ushort>();
-        private static Dictionary<ushort, Type> _IDToMessageType = new Dictionary<ushort, Type>();
         private static MemoryStream _copyStream = new MemoryStream();
 
         static Message()
         {
-            if(MessageHashSettings.HashSeed < 0){MessageHashSettings.HashSeed = 0;}
+
             Console.WriteLine("Initialize message system");
             Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
             List<Type> messages = new List<Type>();
-            _typeToMessageID = new Dictionary<Type, ushort>();
-            _IDToMessageType = new Dictionary<ushort, Type>();
-            #if DEBUG
-            List<string> SeedFails = new List<string>();
-            #endif
             foreach (Assembly a in assemblies)
             {
                 foreach (Type t in a.GetTypes())
@@ -78,28 +70,6 @@ namespace Netkraft.Messaging
                     messages.Add(t);
                 }
             }
-            foreach (Type t in messages)
-            {
-                ushort id = StringHasher.HashStringTo16Bit(MessageHashSettings.HashSeed, t.Name);
-                Console.WriteLine($"Hashing {t.Name} to id {id}");
-                _typeToMessageID.Add(t, id);
-                if (_IDToMessageType.ContainsKey(id))
-                {
-                    #if DEBUG
-                    SeedFails.Add($"The message type {t.Name} and {_IDToMessageType[id].Name} has a hash collision with hash {id}. Please Change the value of MessageHashSettings.HashSeed to something other then {MessageHashSettings.HashSeed}");
-                    #endif
-                }
-
-                else
-                    _IDToMessageType.Add(id, t);
-            }
-            #if DEBUG
-            foreach (string s in SeedFails)
-            {
-                Trace.WriteLine(s);
-                throw new Exception(s);
-            }
-            #endif
         }
         //Static public interface!
         /// <summary>
@@ -111,10 +81,7 @@ namespace Netkraft.Messaging
         /// <param name="context">NetkraftClient this message was received at and the endPoint that sent it</param>
         public static object ReadMessage(Stream stream, ClientConnection context)
         {
-            BinaryReader reader = new BinaryReader(stream);
-            ushort id = reader.ReadUInt16();
-            Type messageType = _IDToMessageType[id];
-            return WritableSystem.Read(stream, messageType);
+            return Writable.Read(stream);
         }
         /// <summary>
         /// Write a message to a stream.
@@ -124,9 +91,7 @@ namespace Netkraft.Messaging
         /// <param name="stream">Stream to write message into. Message will be written into the stream at the current position of the stream.</param>
         public static void WriteMessage(Stream stream, object message)
         {
-            BinaryWriter writer = new BinaryWriter(stream);
-            writer.Write(_typeToMessageID[message.GetType()]);
-            WritableSystem.Write(stream, message);
+            Writable.Write(stream, message);
         }
         //Callbacks to user created messages.
         /// <summary>
@@ -138,27 +103,9 @@ namespace Netkraft.Messaging
         public static object CopyMessage(object message)
         {
             _copyStream.Seek(0, SeekOrigin.Begin); //Seek zero.
-            WritableSystem.Write(_copyStream, message);//Write this message to copyStream.
+            Writable.WriteRaw(_copyStream, message);//Write this message to copyStream.
             _copyStream.Seek(0, SeekOrigin.Begin); //Seek zero.
-            return WritableSystem.Read(_copyStream, message.GetType());//Return copy read from stream.
-        }
-    }
-    public static class MessageHashSettings
-    {
-        private static int _hashSeed = -1;
-        public static ushort HashSeed
-        {
-            get { return (ushort)_hashSeed; }
-            set
-            {
-                if(_hashSeed > 0)
-                {
-                    Trace.WriteLine("The MessageHashSettings.HashSeed has to be set before the MessageSystem is used, to avoid reinitialization");
-                    throw new Exception("The MessageHashSettings.HashSeed has to be set before the MessageSystem is used, to avoid reinitialization");
-                }
-                else
-                    _hashSeed = value;
-            }
+            return Writable.ReadRaw(_copyStream, message.GetType());//Return copy read from stream.
         }
     }
 }

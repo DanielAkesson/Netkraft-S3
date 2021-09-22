@@ -12,23 +12,57 @@ namespace NetkraftTest
     public class ChanneledSocketTest
     {
         [TestMethod]
+        public void SimpleSendUnreliableChannel()
+        {
+            Random r = new Random();
+            int port1 = r.Next(2000, 4000);
+            int port2 = r.Next(2000, 4000);
+            ChannelSocket client1 = new ChannelSocket(port1, 100, false);
+            Console.WriteLine($"Setup Socket on port {port1}");
+            ChannelSocket client2 = new ChannelSocket(port2, 100, false);
+            Console.WriteLine($"Setup Socket on port {port2}");
+            IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), port2);
+            byte[] buffer;
+            //Client 1
+            //Send one thousand messages with a loss rate of 90%
+            int data = 50;
+            buffer = BitConverter.GetBytes(data);
+            Console.WriteLine($"Attempting to send {data} on socket1");
+            client1.Send(buffer, Netkraft.ChannelId.Reliable, client2Address);
+            Console.WriteLine($"done");
+            //Client 2
+            buffer = new byte[1000];
+            //Pull one thousand messages
+            Console.WriteLine($"Attempting to receive {data} on socket2");
+            int size = client2.Receive(ref buffer, out IPEndPoint sender, out Netkraft.ChannelId channel);
+            Console.WriteLine($"done");
+            data = BitConverter.ToInt32(buffer, 0);
+            int hID = buffer[1];
+            Console.WriteLine($"received: [size: {size} data: {data} headerID: {hID}]");
+
+            //Checks!
+            Assert.IsTrue(true);
+        }
+        [TestMethod]
         public void SimpleSendReliableChannel()
         {
-            ChannelSocket client1 = new ChannelSocket(3000, 100, 0.5f);
-            ChannelSocket client2 = new ChannelSocket(3001, 100, 0.5f);
+            ChannelSocket client1 = new ChannelSocket(3000, 100, false);
+            client1.SuccessRate = 0.5f;
+            ChannelSocket client2 = new ChannelSocket(3001, 100, false);
+            client2.SuccessRate = 0.5f;
             IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3001);
             byte[] buffer = new byte[1000];
             //Client 1
             //Send one thousand messages with a loss rate of 90%
             int data = 50;
             buffer = BitConverter.GetBytes(data);
-            client1.Send(buffer, client2Address, Netkraft.ChannelId2.Reliable, () => { });
+            client1.Send(buffer, Netkraft.ChannelId.Reliable, client2Address, () => { });
 
             //Client 2
             buffer = new byte[1000];
             //Pull one thousand messages
-            int size = client2.Receive(out buffer, out IPEndPoint sender, Netkraft.ChannelId2.Reliable);
-            data = BitConverter.ToInt32(buffer, 2);
+            int size = client2.Receive(ref buffer, out IPEndPoint sender, out Netkraft.ChannelId channel);
+            data = BitConverter.ToInt32(buffer, 0);
             int hID = buffer[1];
             Console.WriteLine($"received: [size: {size} data: {data} headerID: {hID}]");
 
@@ -38,10 +72,12 @@ namespace NetkraftTest
         [TestMethod]
         public void MultiSendAndAckedReliableChannel()
         {
-            ChannelSocket client1 = new ChannelSocket(3002, 100, 0.5f);
-            ChannelSocket client2 = new ChannelSocket(3003, 100, 0.5f);
+            ChannelSocket client1 = new ChannelSocket(3002, 100, false);
+            client1.SuccessRate = 0.5f;
+            ChannelSocket client2 = new ChannelSocket(3003, 100, false);
+            client2.SuccessRate = 0.5f;
             IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3003);
-            byte[] buffer = new byte[1000];
+            byte[] buffer = new byte[4];
             Random r = new Random();
             //Check lists
             List<int> sentIds = new List<int>();
@@ -55,20 +91,19 @@ namespace NetkraftTest
             {
                 int data = r.Next(9999999);
                 buffer = BitConverter.GetBytes(data);
-                client1.Send(buffer, client2Address, Netkraft.ChannelId2.Reliable, () => { ackedIds.Add(data); });
+                client1.Send(buffer, Netkraft.ChannelId.Reliable, client2Address, () => { ackedIds.Add(data); });
                 sentIds.Add(data);
             }
 
             //Client 2
-            buffer = new byte[1000];
+            buffer = new byte[4];
             IPEndPoint sender;
             //Pull one thousand messages
             for (int i = 0; i <messageAmount; i++)
             {
-                int size = client2.Receive(out buffer, out sender, Netkraft.ChannelId2.Reliable);
-                int data = BitConverter.ToInt32(buffer, 2);
-                int hID = buffer[1];
-                Console.WriteLine($"received: [size: {size} data: {data} headerID: {hID}]");
+                int size = client2.Receive(ref buffer, out sender, out Netkraft.ChannelId channel);
+                int data = BitConverter.ToInt32(buffer, 0);
+                Console.WriteLine($"received: [size: {size} data: {data}]");
                 received.Add(data);
             }
 
@@ -100,21 +135,21 @@ namespace NetkraftTest
         [TestMethod]
         public void SimpleSendUnreliableAckedChannel()
         {
-            ChannelSocket client1 = new ChannelSocket(3004, 100, 1);
-            ChannelSocket client2 = new ChannelSocket(3005, 100, 1);
+            ChannelSocket client1 = new ChannelSocket(3004, 100, false);
+            ChannelSocket client2 = new ChannelSocket(3005, 100, false);
             IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3005);
             byte[] buffer = new byte[1000];
             //Client 1
             //Send one thousand messages with a loss rate of 90%
             int data = 50;
             buffer = BitConverter.GetBytes(data);
-            client1.Send(buffer, client2Address, Netkraft.ChannelId2.Reliable, () => { });
+            client1.Send(buffer, Netkraft.ChannelId.UnreliableAcknowledged, client2Address, () => { });
 
             //Client 2
             buffer = new byte[1000];
             //Pull one thousand messages
-            int size = client2.Receive(out buffer, out IPEndPoint sender, Netkraft.ChannelId2.Reliable);
-            data = BitConverter.ToInt32(buffer, 2);
+            int size = client2.Receive(ref buffer, out IPEndPoint sender, out Netkraft.ChannelId channel);
+            data = BitConverter.ToInt32(buffer, 0);
             int hID = buffer[1];
             Console.WriteLine($"received: [size: {size} data: {data} headerID: {hID}]");
 

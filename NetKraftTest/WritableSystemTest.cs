@@ -1,10 +1,10 @@
 ﻿using System;
-using Netkraft.Messaging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
 using System.Linq;
+using Netkraft.WritableSystem;
 
-namespace NetKraftTest
+namespace NetkraftTest
 {
     [TestClass]
     public class WritableSystemTest
@@ -15,160 +15,160 @@ namespace NetKraftTest
         public void Ints()
         {
             //Int16
-            WritableSystem.Write(stream, (Int16)1);
-            WritableSystem.Write(stream, (Int16)0);
-            WritableSystem.Write(stream, (Int16)(-1));
-            WritableSystem.Write(stream, Int16.MaxValue);
-            WritableSystem.Write(stream, Int16.MinValue);
+            Writable.WriteRaw(stream, (Int16)1);
+            Writable.WriteRaw(stream, (Int16)0);
+            Writable.WriteRaw(stream, (Int16)(-1));
+            Writable.WriteRaw(stream, Int16.MaxValue);
+            Writable.WriteRaw(stream, Int16.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<Int16>(stream), (Int16)1);
-            Assert.AreEqual(WritableSystem.Read<Int16>(stream), (Int16)0);
-            Assert.AreEqual(WritableSystem.Read<Int16>(stream), (Int16)(-1));
-            Assert.AreEqual(WritableSystem.Read<Int16>(stream), Int16.MaxValue);
-            Assert.AreEqual(WritableSystem.Read<Int16>(stream), Int16.MinValue);
+            Assert.AreEqual(Writable.ReadRaw<Int16>(stream), (Int16)1);
+            Assert.AreEqual(Writable.ReadRaw<Int16>(stream), (Int16)0);
+            Assert.AreEqual(Writable.ReadRaw<Int16>(stream), (Int16)(-1));
+            Assert.AreEqual(Writable.ReadRaw<Int16>(stream), Int16.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<Int16>(stream), Int16.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //Int32
-            WritableSystem.Write(stream, (Int32)1);
-            WritableSystem.Write(stream, (Int32)0);
-            WritableSystem.Write(stream, (Int32)(-1));
-            WritableSystem.Write(stream, Int32.MaxValue);
-            WritableSystem.Write(stream, Int32.MinValue);
+            Writable.WriteRaw(stream, (Int32)1);
+            Writable.WriteRaw(stream, (Int32)0);
+            Writable.WriteRaw(stream, (Int32)(-1));
+            Writable.WriteRaw(stream, Int32.MaxValue);
+            Writable.WriteRaw(stream, Int32.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<Int32>(stream), (Int32)1);
-            Assert.AreEqual(WritableSystem.Read<Int32>(stream), (Int32)0);
-            Assert.AreEqual(WritableSystem.Read<Int32>(stream), (Int32)(-1));
-            Assert.AreEqual(WritableSystem.Read<Int32>(stream), Int32.MaxValue);
-            Assert.AreEqual(WritableSystem.Read<Int32>(stream), Int32.MinValue);
+            Assert.AreEqual(Writable.ReadRaw<Int32>(stream), (Int32)1);
+            Assert.AreEqual(Writable.ReadRaw<Int32>(stream), (Int32)0);
+            Assert.AreEqual(Writable.ReadRaw<Int32>(stream), (Int32)(-1));
+            Assert.AreEqual(Writable.ReadRaw<Int32>(stream), Int32.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<Int32>(stream), Int32.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //Int64
-            WritableSystem.Write(stream, (Int64)1);
-            WritableSystem.Write(stream, (Int64)0);
-            WritableSystem.Write(stream, (Int64)(-1));
-            WritableSystem.Write(stream, Int64.MaxValue);
-            WritableSystem.Write(stream, Int64.MinValue);
+            Writable.WriteRaw(stream, (Int64)1);
+            Writable.WriteRaw(stream, (Int64)0);
+            Writable.WriteRaw(stream, (Int64)(-1));
+            Writable.WriteRaw(stream, Int64.MaxValue);
+            Writable.WriteRaw(stream, Int64.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<Int64>(stream), (Int64)1);
-            Assert.AreEqual(WritableSystem.Read<Int64>(stream), (Int64)0);
-            Assert.AreEqual(WritableSystem.Read<Int64>(stream), (Int64)(-1));
-            Assert.AreEqual(WritableSystem.Read<Int64>(stream), Int64.MaxValue);
-            Assert.AreEqual(WritableSystem.Read<Int64>(stream), Int64.MinValue);
+            Assert.AreEqual(Writable.ReadRaw<Int64>(stream), (Int64)1);
+            Assert.AreEqual(Writable.ReadRaw<Int64>(stream), (Int64)0);
+            Assert.AreEqual(Writable.ReadRaw<Int64>(stream), (Int64)(-1));
+            Assert.AreEqual(Writable.ReadRaw<Int64>(stream), Int64.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<Int64>(stream), Int64.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //short
-            WritableSystem.Write(stream, (short)1);
-            WritableSystem.Write(stream, (short)0);
-            WritableSystem.Write(stream, (short)(-1));
-            WritableSystem.Write(stream, short.MaxValue);
-            WritableSystem.Write(stream, short.MinValue);
+            Writable.WriteRaw(stream, (short)1);
+            Writable.WriteRaw(stream, (short)0);
+            Writable.WriteRaw(stream, (short)(-1));
+            Writable.WriteRaw(stream, short.MaxValue);
+            Writable.WriteRaw(stream, short.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<short>(stream), (short)1);
-            Assert.AreEqual(WritableSystem.Read<short>(stream), (short)0);
-            Assert.AreEqual(WritableSystem.Read<short>(stream), (short)(-1));
-            Assert.AreEqual(WritableSystem.Read<short>(stream), short.MaxValue);
-            Assert.AreEqual(WritableSystem.Read<short>(stream), short.MinValue);
+            Assert.AreEqual(Writable.ReadRaw<short>(stream), (short)1);
+            Assert.AreEqual(Writable.ReadRaw<short>(stream), (short)0);
+            Assert.AreEqual(Writable.ReadRaw<short>(stream), (short)(-1));
+            Assert.AreEqual(Writable.ReadRaw<short>(stream), short.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<short>(stream), short.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //int
-            WritableSystem.Write(stream, (int)1);
-            WritableSystem.Write(stream, (int)0);
-            WritableSystem.Write(stream, (int)(-1));
-            WritableSystem.Write(stream, int.MaxValue);
-            WritableSystem.Write(stream, int.MinValue);
+            Writable.WriteRaw(stream, (int)1);
+            Writable.WriteRaw(stream, (int)0);
+            Writable.WriteRaw(stream, (int)(-1));
+            Writable.WriteRaw(stream, int.MaxValue);
+            Writable.WriteRaw(stream, int.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<int>(stream), (int)1);
-            Assert.AreEqual(WritableSystem.Read<int>(stream), (int)0);
-            Assert.AreEqual(WritableSystem.Read<int>(stream), (int)(-1));
-            Assert.AreEqual(WritableSystem.Read<int>(stream), int.MaxValue);
-            Assert.AreEqual(WritableSystem.Read<int>(stream), int.MinValue);
+            Assert.AreEqual(Writable.ReadRaw<int>(stream), (int)1);
+            Assert.AreEqual(Writable.ReadRaw<int>(stream), (int)0);
+            Assert.AreEqual(Writable.ReadRaw<int>(stream), (int)(-1));
+            Assert.AreEqual(Writable.ReadRaw<int>(stream), int.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<int>(stream), int.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //long
-            WritableSystem.Write(stream, (long)1);
-            WritableSystem.Write(stream, (long)0);
-            WritableSystem.Write(stream, (long)(-1));
-            WritableSystem.Write(stream, long.MaxValue);
-            WritableSystem.Write(stream, long.MinValue);
+            Writable.WriteRaw(stream, (long)1);
+            Writable.WriteRaw(stream, (long)0);
+            Writable.WriteRaw(stream, (long)(-1));
+            Writable.WriteRaw(stream, long.MaxValue);
+            Writable.WriteRaw(stream, long.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<long>(stream), (long)1);
-            Assert.AreEqual(WritableSystem.Read<long>(stream), (long)0);
-            Assert.AreEqual(WritableSystem.Read<long>(stream), (long)(-1));
-            Assert.AreEqual(WritableSystem.Read<long>(stream), long.MaxValue);
-            Assert.AreEqual(WritableSystem.Read<long>(stream), long.MinValue);
+            Assert.AreEqual(Writable.ReadRaw<long>(stream), (long)1);
+            Assert.AreEqual(Writable.ReadRaw<long>(stream), (long)0);
+            Assert.AreEqual(Writable.ReadRaw<long>(stream), (long)(-1));
+            Assert.AreEqual(Writable.ReadRaw<long>(stream), long.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<long>(stream), long.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
         }
         [TestMethod]
         public void UInts()
         {
             //UInt16
-            WritableSystem.Write(stream, (UInt16)1);
-            WritableSystem.Write(stream, (UInt16)0);
-            WritableSystem.Write(stream, UInt16.MaxValue);
+            Writable.WriteRaw(stream, (UInt16)1);
+            Writable.WriteRaw(stream, (UInt16)0);
+            Writable.WriteRaw(stream, UInt16.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<UInt16>(stream), (UInt16)1);
-            Assert.AreEqual(WritableSystem.Read<UInt16>(stream), (UInt16)0);
-            Assert.AreEqual(WritableSystem.Read<UInt16>(stream), UInt16.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<UInt16>(stream), (UInt16)1);
+            Assert.AreEqual(Writable.ReadRaw<UInt16>(stream), (UInt16)0);
+            Assert.AreEqual(Writable.ReadRaw<UInt16>(stream), UInt16.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //UInt32
-            WritableSystem.Write(stream, (UInt32)1);
-            WritableSystem.Write(stream, (UInt32)0);
-            WritableSystem.Write(stream, UInt32.MaxValue);
+            Writable.WriteRaw(stream, (UInt32)1);
+            Writable.WriteRaw(stream, (UInt32)0);
+            Writable.WriteRaw(stream, UInt32.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<UInt32>(stream), (UInt32)1);
-            Assert.AreEqual(WritableSystem.Read<UInt32>(stream), (UInt32)0);
-            Assert.AreEqual(WritableSystem.Read<UInt32>(stream), UInt32.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<UInt32>(stream), (UInt32)1);
+            Assert.AreEqual(Writable.ReadRaw<UInt32>(stream), (UInt32)0);
+            Assert.AreEqual(Writable.ReadRaw<UInt32>(stream), UInt32.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //UInt64
-            WritableSystem.Write(stream, (UInt64)1);
-            WritableSystem.Write(stream, (UInt64)0);
-            WritableSystem.Write(stream, UInt64.MaxValue);
+            Writable.WriteRaw(stream, (UInt64)1);
+            Writable.WriteRaw(stream, (UInt64)0);
+            Writable.WriteRaw(stream, UInt64.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<UInt64>(stream), (UInt64)1);
-            Assert.AreEqual(WritableSystem.Read<UInt64>(stream), (UInt64)0);
-            Assert.AreEqual(WritableSystem.Read<UInt64>(stream), UInt64.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<UInt64>(stream), (UInt64)1);
+            Assert.AreEqual(Writable.ReadRaw<UInt64>(stream), (UInt64)0);
+            Assert.AreEqual(Writable.ReadRaw<UInt64>(stream), UInt64.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //byte
-            WritableSystem.Write(stream, (byte)1);
-            WritableSystem.Write(stream, (byte)0);
-            WritableSystem.Write(stream, byte.MaxValue);
+            Writable.WriteRaw(stream, (byte)1);
+            Writable.WriteRaw(stream, (byte)0);
+            Writable.WriteRaw(stream, byte.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<byte>(stream), (byte)1);
-            Assert.AreEqual(WritableSystem.Read<byte>(stream), (byte)0);
-            Assert.AreEqual(WritableSystem.Read<byte>(stream), byte.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<byte>(stream), (byte)1);
+            Assert.AreEqual(Writable.ReadRaw<byte>(stream), (byte)0);
+            Assert.AreEqual(Writable.ReadRaw<byte>(stream), byte.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //ushort
-            WritableSystem.Write(stream, (ushort)1);
-            WritableSystem.Write(stream, (ushort)0);
-            WritableSystem.Write(stream, ushort.MaxValue);
+            Writable.WriteRaw(stream, (ushort)1);
+            Writable.WriteRaw(stream, (ushort)0);
+            Writable.WriteRaw(stream, ushort.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<ushort>(stream), (ushort)1);
-            Assert.AreEqual(WritableSystem.Read<ushort>(stream), (ushort)0);
-            Assert.AreEqual(WritableSystem.Read<ushort>(stream), ushort.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<ushort>(stream), (ushort)1);
+            Assert.AreEqual(Writable.ReadRaw<ushort>(stream), (ushort)0);
+            Assert.AreEqual(Writable.ReadRaw<ushort>(stream), ushort.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //uint
-            WritableSystem.Write(stream, (uint)1);
-            WritableSystem.Write(stream, (uint)0);
-            WritableSystem.Write(stream, uint.MaxValue);
+            Writable.WriteRaw(stream, (uint)1);
+            Writable.WriteRaw(stream, (uint)0);
+            Writable.WriteRaw(stream, uint.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<uint>(stream), (uint)1);
-            Assert.AreEqual(WritableSystem.Read<uint>(stream), (uint)0);
-            Assert.AreEqual(WritableSystem.Read<uint>(stream), uint.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<uint>(stream), (uint)1);
+            Assert.AreEqual(Writable.ReadRaw<uint>(stream), (uint)0);
+            Assert.AreEqual(Writable.ReadRaw<uint>(stream), uint.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //ulong
-            WritableSystem.Write(stream, (ulong)1);
-            WritableSystem.Write(stream, (ulong)0);
-            WritableSystem.Write(stream, ulong.MaxValue);
+            Writable.WriteRaw(stream, (ulong)1);
+            Writable.WriteRaw(stream, (ulong)0);
+            Writable.WriteRaw(stream, ulong.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<ulong>(stream), (ulong)1);
-            Assert.AreEqual(WritableSystem.Read<ulong>(stream), (ulong)0);
-            Assert.AreEqual(WritableSystem.Read<ulong>(stream), ulong.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<ulong>(stream), (ulong)1);
+            Assert.AreEqual(Writable.ReadRaw<ulong>(stream), (ulong)0);
+            Assert.AreEqual(Writable.ReadRaw<ulong>(stream), ulong.MaxValue);
             stream.Seek(0, SeekOrigin.Begin);
 
         }
@@ -176,59 +176,59 @@ namespace NetKraftTest
         public void FloatingPointNumbers()
         {
             //Single
-            WritableSystem.Write(stream, (Single)1);
-            WritableSystem.Write(stream, (Single)0);
-            WritableSystem.Write(stream, (Single)(-1));
-            WritableSystem.Write(stream, Single.MaxValue);
-            WritableSystem.Write(stream, Single.MinValue);
+            Writable.WriteRaw(stream, (Single)1);
+            Writable.WriteRaw(stream, (Single)0);
+            Writable.WriteRaw(stream, (Single)(-1));
+            Writable.WriteRaw(stream, Single.MaxValue);
+            Writable.WriteRaw(stream, Single.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<Single>(stream), (Single)1);
-            Assert.AreEqual(WritableSystem.Read<Single>(stream), (Single)0);
-            Assert.AreEqual(WritableSystem.Read<Single>(stream), (Single)(-1));
-            Assert.AreEqual(WritableSystem.Read<Single>(stream), Single.MaxValue);
-            Assert.AreEqual(WritableSystem.Read<Single>(stream), Single.MinValue);
+            Assert.AreEqual(Writable.ReadRaw<Single>(stream), (Single)1);
+            Assert.AreEqual(Writable.ReadRaw<Single>(stream), (Single)0);
+            Assert.AreEqual(Writable.ReadRaw<Single>(stream), (Single)(-1));
+            Assert.AreEqual(Writable.ReadRaw<Single>(stream), Single.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<Single>(stream), Single.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //Double
-            WritableSystem.Write(stream, (Double)1);
-            WritableSystem.Write(stream, (Double)0);
-            WritableSystem.Write(stream, (Double)(-1));
-            WritableSystem.Write(stream, Double.MaxValue);
-            WritableSystem.Write(stream, Double.MinValue);
+            Writable.WriteRaw(stream, (Double)1);
+            Writable.WriteRaw(stream, (Double)0);
+            Writable.WriteRaw(stream, (Double)(-1));
+            Writable.WriteRaw(stream, Double.MaxValue);
+            Writable.WriteRaw(stream, Double.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<Double>(stream), (Double)1);
-            Assert.AreEqual(WritableSystem.Read<Double>(stream), (Double)0);
-            Assert.AreEqual(WritableSystem.Read<Double>(stream), (Double)(-1));
-            Assert.AreEqual(WritableSystem.Read<Double>(stream), Double.MaxValue);
-            Assert.AreEqual(WritableSystem.Read<Double>(stream), Double.MinValue);
+            Assert.AreEqual(Writable.ReadRaw<Double>(stream), (Double)1);
+            Assert.AreEqual(Writable.ReadRaw<Double>(stream), (Double)0);
+            Assert.AreEqual(Writable.ReadRaw<Double>(stream), (Double)(-1));
+            Assert.AreEqual(Writable.ReadRaw<Double>(stream), Double.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<Double>(stream), Double.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //float
-            WritableSystem.Write(stream, (float)1);
-            WritableSystem.Write(stream, (float)0);
-            WritableSystem.Write(stream, (float)(-1));
-            WritableSystem.Write(stream, float.MaxValue);
-            WritableSystem.Write(stream, float.MinValue);
+            Writable.WriteRaw(stream, (float)1);
+            Writable.WriteRaw(stream, (float)0);
+            Writable.WriteRaw(stream, (float)(-1));
+            Writable.WriteRaw(stream, float.MaxValue);
+            Writable.WriteRaw(stream, float.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<float>(stream), (float)1);
-            Assert.AreEqual(WritableSystem.Read<float>(stream), (float)0);
-            Assert.AreEqual(WritableSystem.Read<float>(stream), (float)(-1));
-            Assert.AreEqual(WritableSystem.Read<float>(stream), float.MaxValue);
-            Assert.AreEqual(WritableSystem.Read<float>(stream), float.MinValue);
+            Assert.AreEqual(Writable.ReadRaw<float>(stream), (float)1);
+            Assert.AreEqual(Writable.ReadRaw<float>(stream), (float)0);
+            Assert.AreEqual(Writable.ReadRaw<float>(stream), (float)(-1));
+            Assert.AreEqual(Writable.ReadRaw<float>(stream), float.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<float>(stream), float.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
 
             //double
-            WritableSystem.Write(stream, (double)1);
-            WritableSystem.Write(stream, (double)0);
-            WritableSystem.Write(stream, (double)(-1));
-            WritableSystem.Write(stream, double.MaxValue);
-            WritableSystem.Write(stream, double.MinValue);
+            Writable.WriteRaw(stream, (double)1);
+            Writable.WriteRaw(stream, (double)0);
+            Writable.WriteRaw(stream, (double)(-1));
+            Writable.WriteRaw(stream, double.MaxValue);
+            Writable.WriteRaw(stream, double.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<double>(stream), (double)1);
-            Assert.AreEqual(WritableSystem.Read<double>(stream), (double)0);
-            Assert.AreEqual(WritableSystem.Read<double>(stream), (double)(-1));
-            Assert.AreEqual(WritableSystem.Read<double>(stream), double.MaxValue);
-            Assert.AreEqual(WritableSystem.Read<double>(stream), double.MinValue);
+            Assert.AreEqual(Writable.ReadRaw<double>(stream), (double)1);
+            Assert.AreEqual(Writable.ReadRaw<double>(stream), (double)0);
+            Assert.AreEqual(Writable.ReadRaw<double>(stream), (double)(-1));
+            Assert.AreEqual(Writable.ReadRaw<double>(stream), double.MaxValue);
+            Assert.AreEqual(Writable.ReadRaw<double>(stream), double.MinValue);
             stream.Seek(0, SeekOrigin.Begin);
 
         }
@@ -236,18 +236,18 @@ namespace NetKraftTest
         public void Boolean()
         {
             //bool
-            WritableSystem.Write(stream, true);
-            WritableSystem.Write(stream, false);
+            Writable.WriteRaw(stream, true);
+            Writable.WriteRaw(stream, false);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<bool>(stream), true);
-            Assert.AreEqual(WritableSystem.Read<bool>(stream), false);
+            Assert.AreEqual(Writable.ReadRaw<bool>(stream), true);
+            Assert.AreEqual(Writable.ReadRaw<bool>(stream), false);
             stream.Seek(0, SeekOrigin.Begin);
             //Boolean
-            WritableSystem.Write(stream, (Boolean)true);
-            WritableSystem.Write(stream, (Boolean)false);
+            Writable.WriteRaw(stream, (Boolean)true);
+            Writable.WriteRaw(stream, (Boolean)false);
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<Boolean>(stream), (Boolean)true);
-            Assert.AreEqual(WritableSystem.Read<Boolean>(stream), (Boolean)false);
+            Assert.AreEqual(Writable.ReadRaw<Boolean>(stream), (Boolean)true);
+            Assert.AreEqual(Writable.ReadRaw<Boolean>(stream), (Boolean)false);
             stream.Seek(0, SeekOrigin.Begin);
 
         }
@@ -255,28 +255,28 @@ namespace NetKraftTest
         public void Strings()
         {
             //strings
-            WritableSystem.Write(stream, "hej");
-            WritableSystem.Write(stream, "š↓▲ÿc§π√R╙╟Ä╥E");
-            WritableSystem.Write(stream, 'K');
+            Writable.WriteRaw(stream, "hej");
+            Writable.WriteRaw(stream, "š↓▲ÿc§π√R╙╟Ä╥E");
+            Writable.WriteRaw(stream, 'K');
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<string>(stream), "hej");
-            Assert.AreEqual(WritableSystem.Read<string>(stream), "š↓▲ÿc§π√R╙╟Ä╥E");
-            Assert.AreEqual(WritableSystem.Read<char>(stream), 'K');
+            Assert.AreEqual(Writable.ReadRaw<string>(stream), "hej");
+            Assert.AreEqual(Writable.ReadRaw<string>(stream), "š↓▲ÿc§π√R╙╟Ä╥E");
+            Assert.AreEqual(Writable.ReadRaw<char>(stream), 'K');
             stream.Seek(0, SeekOrigin.Begin);
         }
         [TestMethod]
         public void ArrayTypes()
         {
             //strings
-            WritableSystem.Write(stream, new int[]{ 0, 1, 2, 3, 4 });
-            WritableSystem.Write(stream, new string[] { "0", "1", "2", "3", "4" });
-            WritableSystem.Write(stream, new int[]{ });
+            Writable.WriteRaw(stream, new int[]{ 0, 1, 2, 3, 4 });
+            Writable.WriteRaw(stream, new string[] { "0", "1", "2", "3", "4" });
+            Writable.WriteRaw(stream, new int[]{ });
             stream.Seek(0, SeekOrigin.Begin);
-            bool isEqual1 = Enumerable.SequenceEqual(WritableSystem.Read<int[]>(stream), new int[] { 0, 1, 2, 3, 4 });
+            bool isEqual1 = Enumerable.SequenceEqual(Writable.ReadRaw<int[]>(stream), new int[] { 0, 1, 2, 3, 4 });
             Assert.IsTrue(isEqual1);
-            bool isEqual2 = Enumerable.SequenceEqual(WritableSystem.Read<string[]>(stream), new string[] { "0", "1", "2", "3", "4" });
+            bool isEqual2 = Enumerable.SequenceEqual(Writable.ReadRaw<string[]>(stream), new string[] { "0", "1", "2", "3", "4" });
             Assert.IsTrue(isEqual2);
-            bool isEqual3 = Enumerable.SequenceEqual(WritableSystem.Read<int[]>(stream), new int[] { });
+            bool isEqual3 = Enumerable.SequenceEqual(Writable.ReadRaw<int[]>(stream), new int[] { });
             Assert.IsTrue(isEqual3);
             stream.Seek(0, SeekOrigin.Begin);
         }
@@ -315,9 +315,9 @@ namespace NetKraftTest
         public void CustomFunctions()
         {
             //strings
-            WritableSystem.Write(stream, new Vector3{ x = 0.0f, y = -1.0f, z = 1.0f, });
+            Writable.WriteRaw(stream, new Vector3{ x = 0.0f, y = -1.0f, z = 1.0f, });
             stream.Seek(0, SeekOrigin.Begin);
-            Assert.AreEqual(WritableSystem.Read<Vector3>(stream), new Vector3 { x = 0.0f, y = -1.0f, z = 1.0f, });
+            Assert.AreEqual(Writable.ReadRaw<Vector3>(stream), new Vector3 { x = 0.0f, y = -1.0f, z = 1.0f, });
             stream.Seek(0, SeekOrigin.Begin);
         }
 
@@ -341,7 +341,7 @@ namespace NetKraftTest
         public void Structs()
         {
             //strings
-            WritableSystem.Write(stream, 
+            Writable.WriteRaw(stream, 
                 new Construct
                 {
                     a = "what's up",
@@ -350,7 +350,7 @@ namespace NetKraftTest
                     d = new int[]{ 0, 1, 2, 3 }
                 });
             stream.Seek(0, SeekOrigin.Begin);
-            Construct value = WritableSystem.Read<Construct>(stream);
+            Construct value = Writable.ReadRaw<Construct>(stream);
             Assert.AreEqual(value, 
                 new Construct
                 {
@@ -375,13 +375,13 @@ namespace NetKraftTest
         public void Classes()
         {
             //strings
-            WritableSystem.Write(stream,
+            Writable.WriteRaw(stream,
                 new ConstructClass
                 {
                     a = new Vector3 { x = 0.0f, y = -1.0f, z = 1.0f, },
                 });
             stream.Seek(0, SeekOrigin.Begin);
-            ConstructClass value = WritableSystem.Read<ConstructClass>(stream);
+            ConstructClass value = Writable.ReadRaw<ConstructClass>(stream);
             Assert.AreEqual(value,
                 new ConstructClass
                 {
