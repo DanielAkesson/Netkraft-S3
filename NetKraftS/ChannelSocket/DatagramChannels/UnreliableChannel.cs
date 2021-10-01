@@ -13,9 +13,6 @@ namespace Netkraft.ChannelSocket
         private readonly uint channelMask = 15; //00001111
         private readonly uint additionalMask = 240; //11110000
 
-        //Receiver data
-        private IPEndPoint _sender;
-        private int _size;
         public UnreliableChannel(ChannelSocket socket)
         {
             sock = socket;

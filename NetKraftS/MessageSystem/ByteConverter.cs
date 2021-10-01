@@ -86,17 +86,6 @@ namespace Netkraft
             return buffer[0];
         }
 
-        [WriteFunction(typeof(bool))]
-        internal static void WriteBool(Stream stream, object value)
-        {
-            stream.WriteByte(((bool)value) ? (byte)1 : (byte)0);
-        }
-        [ReadFunction(typeof(bool))]
-        internal static object ReadBool(Stream stream)
-        {
-            stream.Read(buffer, 0, 1);
-            return buffer[0] > 0;
-        }
         //Exponents
         [WriteFunction(typeof(float))]
         internal static void WriteSingle(Stream stream, object value)
@@ -120,6 +109,7 @@ namespace Netkraft
             stream.Read(buffer, 0, 8);
             return BitConverter.ToDouble(buffer, 0);
         }
+
         //Misc
         [WriteFunction(typeof(string))]
         internal static void WriteString(Stream stream, object value)
@@ -154,6 +144,17 @@ namespace Netkraft
         {
             stream.Read(buffer, 0, 1);
             return (char)buffer[0];
+        }
+        [WriteFunction(typeof(bool))]
+        internal static void WriteBool(Stream stream, object value)
+        {
+            stream.WriteByte(((bool)value) ? (byte)1 : (byte)0);
+        }
+        [ReadFunction(typeof(bool))]
+        internal static object ReadBool(Stream stream)
+        {
+            stream.Read(buffer, 0, 1);
+            return buffer[0] > 0;
         }
     }
 }

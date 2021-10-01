@@ -14,6 +14,16 @@ namespace Netkraft.WritableSystem
     /// <para></para>
     /// </summary>
     public interface IWritable{}
+    /// <summary>
+    /// When reading an object that is delta-compressed the read function will return an object of this type. 
+    /// that needs to be read again with a key value to decompress against.
+    /// </summary>
+    public class CompressedWritable
+    {
+        public Type WritableType;
+        public object UncompressedField;
+        public byte[] RawData;
+    }
     public static class Writable
     {
         static Writable()
@@ -39,9 +49,9 @@ namespace Netkraft.WritableSystem
                 try
                 {
                     //obj is a Writable or IMessage type
-                    if (MetaInformation.ContainsKey(obj.GetType()))
+                    if (FieldInformation.ContainsKey(obj.GetType()))
                     {
-                        List<FieldInfo> metaData = MetaInformation[obj.GetType()];
+                        List<FieldInfo> metaData = FieldInformation[obj.GetType()];
                         foreach (FieldInfo fi in metaData)
                             BinaryFunctions[fi.FieldType].writer(stream, fi.GetValue(obj));
                         return obj;
@@ -57,9 +67,9 @@ namespace Netkraft.WritableSystem
                 try
                 {
                     //obj is a Writable or IMessage type
-                    if (MetaInformation.ContainsKey(writableType))
+                    if (FieldInformation.ContainsKey(writableType))
                     {
-                        List<FieldInfo> metaData = MetaInformation[writableType];
+                        List<FieldInfo> metaData = FieldInformation[writableType];
                         foreach (FieldInfo fi in metaData)
                             fi.SetValue(data, BinaryFunctions[fi.FieldType].reader(stream));
                         return data;
@@ -192,19 +202,22 @@ namespace Netkraft.WritableSystem
 #endif
             }
         }
-
         private static MemoryStream compressStream1 = new MemoryStream();
         private static MemoryStream compressStream2 = new MemoryStream();
         //Binary Reader-Writer
         private static readonly int _supportedArrayDimensionDepth = 4;
         private static Dictionary<Type, (Action<Stream, object> writer, Func<Stream, object> reader)> BinaryFunctions = new Dictionary<Type, (Action<Stream, object> writer, Func<Stream, object> reader)>();
-        private static Dictionary<Type, List<FieldInfo>> MetaInformation = new Dictionary<Type, List<FieldInfo>>();
-        private static Dictionary<Type, ushort> _typeToHash = new Dictionary<Type, ushort>();
-        private static Dictionary<ushort, Type> _hashToType = new Dictionary<ushort, Type>();
+        private static readonly Dictionary<Type, List<FieldInfo>> FieldInformation = new Dictionary<Type, List<FieldInfo>>();
+        private static readonly Dictionary<Type, FieldInfo> CompressSafeFieldInfromation = new Dictionary<Type, FieldInfo>();
+        private static readonly Dictionary<Type, ushort> _typeToHash = new Dictionary<Type, ushort>();
+        private static readonly Dictionary<ushort, Type> _hashToType = new Dictionary<ushort, Type>();
         //Public methods
         public static object Write(Stream stream, object obj)
         {
-            WriteRaw(stream, _typeToHash[obj.GetType()]);
+            ushort hash = _typeToHash[obj.GetType()];
+            if (CompressSafeFieldInfromation.ContainsKey(obj.GetType()))
+                hash = (ushort)(hash & ~1); //Set the first bit in the hash to 0 to show that it has not been compressed.
+            WriteRaw(stream, hash);
             BinaryFunctions[obj.GetType()].writer(stream, obj);
             return obj;
         }
@@ -226,12 +239,63 @@ namespace Netkraft.WritableSystem
         {
             return BinaryFunctions[writableType].reader(stream);
         }
+
+        //Delta compress stuff!
+        /*
         public static object WriteDelta(Stream stream, object obj, object key)
+        {
+            ushort hash = _typeToHash[obj.GetType()];
+            if (CompressSafeFieldInfromation.ContainsKey(obj.GetType()))
+                hash = (ushort)(hash | 1); //Set the first bit in the hash to 1 to show that it has been compressed.
+            WriteRaw(stream, hash);
+
+            //Deal with the CompressSafe field
+            object compressSafeField = CompressSafeFieldInfromation[obj.GetType()].GetValue(obj);
+            BinaryFunctions[obj.GetType()].writer(stream, compressSafeField);
+
+            //Do the normal delta compress
+            WriteDeltaRaw(stream, hash, key);
+            return obj;
+        }
+        public static CompressedWritable ReadDelta(Stream stream)
+        {
+            long pos = stream.Position;
+            ushort hash = (ushort)(ReadRaw<ushort>(stream) & ~1);
+            CompressedWritable writable = new CompressedWritable();
+            writable.WritableType = _hashToType[hash];
+            Type compressType = CompressSafeFieldInfromation[writable.WritableType].GetType();
+            writable.UncompressedField = ReadRaw(stream, compressType);
+            //Raw data
+            stream.Seek(pos, SeekOrigin.Begin);
+            stream.Read(writable.RawData, 0, )
+            WriteRaw(stream, hash);
+            //Deal with the CompressSafe field
+            object compressSafeField = 
+            BinaryFunctions[obj.GetType()].writer(stream, compressSafeField);
+            //Do the normal delta compress
+            WriteDeltaRaw(stream, hash, key);
+            return obj;
+
+        }
+        public static object ReadCompressedWritable(Stream stream, CompressedWritable obj, object key)
+        {
+            ushort hash = _typeToHash[obj.GetType()];
+            if (CompressSafeFieldInfromation.ContainsKey(obj.GetType()))
+                hash = (ushort)(hash | 1); //Set the first bit in the hash to 1 to show that it has been compressed.  
+            WriteRaw(stream, hash);
+            //Deal with the CompressSafe field
+            object compressSafeField = CompressSafeFieldInfromation[obj.GetType()].GetValue(obj);
+            BinaryFunctions[obj.GetType()].writer(stream, compressSafeField);
+            //Do the normal delta compress
+            WriteDeltaRaw(stream, hash, key);
+            return obj;
+        }
+        public static object WriteDeltaRaw(Stream stream, object obj, object key)
         {
             compressStream1.Seek(0, SeekOrigin.Begin);
             compressStream2.Seek(0, SeekOrigin.Begin);
-            Write(compressStream1, obj);
-            Write(compressStream2, key);
+            WriteRaw(compressStream1, obj);
+            WriteRaw(compressStream2, key);
 
             //Header
             ushort objLength = (ushort)compressStream1.Position;
@@ -261,7 +325,7 @@ namespace Netkraft.WritableSystem
             stream.Write(Mask, 0, Mask.Length);
             return obj;
         }
-        public static T ReadDelta<T>(Stream stream, object key)
+        public static T ReadDeltaRaw<T>(Stream stream, object key)
         {
             compressStream2.Seek(0, SeekOrigin.Begin);
             compressStream1.Seek(0, SeekOrigin.Begin);
@@ -281,14 +345,19 @@ namespace Netkraft.WritableSystem
             compressStream1.Seek(0, SeekOrigin.Begin);
             return ReadRaw<T>(compressStream1);
         }
-
+        */
         //Private methods
         private static void AddWritable(Type writableType)
         {
-            if (MetaInformation.ContainsKey(writableType)) return;
+            if (FieldInformation.ContainsKey(writableType)) return;
             List<FieldInfo> fields = new List<FieldInfo>();
-            fields.AddRange(writableType.GetFields().Where(x => ValidateFieldInfo(x) && x.DeclaringType == writableType).ToList());
-            MetaInformation.Add(writableType, fields);
+            fields.AddRange(writableType.GetFields().Where(x => IsValidField(x) && x.DeclaringType == writableType).ToList());
+            FieldInformation.Add(writableType, fields);
+
+            //Add compress safe field if the type contains one. will allow this object to be delta-compressed with a this value intact!
+            FieldInfo CompressSafeField = writableType.GetFields().FirstOrDefault(x => IsCompressSafeField(x) && x.DeclaringType == writableType);
+            if (!CompressSafeFieldInfromation.ContainsKey(writableType) && CompressSafeField != null)
+                CompressSafeFieldInfromation.Add(writableType, CompressSafeField);
         }
         private static void AddSuportedType(Type type, Action<Stream, object> writerFunction, Func<Stream, object> readerFunction)
         {
@@ -350,7 +419,7 @@ namespace Netkraft.WritableSystem
             }
             void AddHashToType(Type typ)
             {
-                ushort hash = StringHasher.HashStringTo16Bit(WritableHashSettings.HashSeed, typ.Name);
+                ushort hash = HashWithDeltabit(typ.Name);
                 _typeToHash.Add(typ, hash);
                 if (!_hashToType.ContainsKey(hash))
                     _hashToType.Add(hash, typ);
@@ -362,13 +431,28 @@ namespace Netkraft.WritableSystem
                     throw new Exception(message);
 #endif
                 }
+                ushort HashWithDeltabit(string value)
+                {
+                    ushort c_hash = StringHasher.HashStringTo16Bit(WritableHashSettings.HashSeed, typ.Name);
+                    if (typ.GetFields().Any(x => IsCompressSafeField(x)))
+                        c_hash = (ushort)(c_hash & ~1);
+                    return c_hash;
+                }
             }
         }
-        private static bool ValidateFieldInfo(FieldInfo info)
+        private static bool IsValidField(FieldInfo info)
         {
-            SkipIndex attribute = info.GetCustomAttribute<SkipIndex>();
+            SkipIndex skipAttribute = info.GetCustomAttribute<SkipIndex>();
+            CompressSafe CompressSafeAttribute = info.GetCustomAttribute<CompressSafe>();
             Type t = info.FieldType;
-            return attribute == null && !info.IsStatic && BinaryFunctions.ContainsKey(t);
+            return skipAttribute == null && CompressSafeAttribute == null && !info.IsStatic && BinaryFunctions.ContainsKey(t);
+        }
+        private static bool IsCompressSafeField(FieldInfo info)
+        {
+            SkipIndex skipAttribute = info.GetCustomAttribute<SkipIndex>();
+            CompressSafe CompressSafeAttribute = info.GetCustomAttribute<CompressSafe>();
+            Type t = info.FieldType;
+            return skipAttribute == null && CompressSafeAttribute != null && !info.IsStatic && BinaryFunctions.ContainsKey(t);
         }
     }
     public static class WritableHashSettings
@@ -391,15 +475,15 @@ namespace Netkraft.WritableSystem
     }
     //Attributes
     /// <summary>
-    /// If added above a field inside a <see cref="Writable"/> or <see cref="Message"/> Interface said field will not be included when sent by <see cref="NetkraftClient"/> or writen to byte array by <see cref="Writable"/>.
+    /// If added above a field inside a <see cref="IWritable"/> or <see cref="Message"/> Interface said field will not be included when sent by <see cref="NetkraftClient"/> or writen to byte array by <see cref="Writable"/>.
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
     public class SkipIndex : Attribute { }
     /// <summary>
-    /// This attributes describes where delta compression will start in a Message or Writable hat inherits from <see cref="IDeltaCompressed"/>.
+    /// If added above a field inside a <see cref="IDeltaCompressable"/> or a delta compressed <see cref="Message"/> Interface said field will not be included when sent by <see cref="NetkraftClient"/> or writen to byte array by <see cref="Writable"/>.
     /// </summary>
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
-    public class DeltaCompressedField : Attribute { }
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false)]
+    public class CompressSafe : Attribute { }
     /// <summary>
     /// Assign a method to write an object of <see cref="Type"/> to a <see cref="Stream"/>. 
     /// <see cref="WriteFunction"/> can only be applied to methods that are public and take the parameters <see cref="Stream"/> and <see cref="object"/>. 

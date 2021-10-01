@@ -9,11 +9,6 @@ namespace Netkraft.ChannelSocket
     public class ChannelSocket
     {
         internal Socket socket;
-       
-        //Channel deliver data
-        private IPEndPoint sender;
-        private ChannelId channel;
-        private int size;
 
         //private
         private byte[] localBuffer = new byte[65536]; //UDP messages can't exceed 65507 bytes so this should always be sufficient
@@ -71,19 +66,6 @@ namespace Netkraft.ChannelSocket
         {
             Send(buffer, channel, 0, buffer.Length, SocketFlags.None, RemoteEP, onAcknowledge);
         }
-        private void addHeaderSpace(ref byte[] payload, ref int offset, ref int size)
-        {
-            if (includeHeader)
-                return;
-
-            //Resizing array to add two empty bytes in the beginning for header info.
-            byte[] copy = new byte[size + 2];
-            Array.ConstrainedCopy(payload, offset, copy, 2, size);
-            size += 2;
-            offset = 0;
-            payload = copy;
-        }
-
         //TODO: Add more ReceiveFrom alternatives to match a normal UDP socket!
         public int Receive(ref byte[] buffer, out IPEndPoint sender, out ChannelId channel)
         {
@@ -103,6 +85,19 @@ namespace Netkraft.ChannelSocket
             pack.channel = channel;
             deliveredPackages.Add(pack);
         }
+
+        private void addHeaderSpace(ref byte[] payload, ref int offset, ref int size)
+        {
+            if (includeHeader)
+                return;
+
+            //Resizing array to add two empty bytes in the beginning for header info.
+            byte[] copy = new byte[size + 2];
+            Array.ConstrainedCopy(payload, offset, copy, 2, size);
+            size += 2;
+            offset = 0;
+            payload = copy;
+        }
         private void ReceiveLoop()
         {
             EndPoint _sender = new IPEndPoint(IPAddress.Any, 0);
@@ -113,7 +108,6 @@ namespace Netkraft.ChannelSocket
                 channels[channel].Deliver(ref localBuffer, size, (IPEndPoint)_sender);
             }
         }
-
         private struct deliverdPackage
         {
             public byte[] buffer;
