@@ -9,7 +9,6 @@ namespace NetkraftTest
     [TestClass]
     public class StringHasherTest
     {
-        [TestMethod]
         public void PrintMisses16Bit()
         {
             Random r = new Random();
@@ -25,7 +24,6 @@ namespace NetkraftTest
             }
             Console.WriteLine($"The 32bit hash function had a collision at an average of {totalMisses / 5} and best case of {bestCase} strings");
         }
-        [TestMethod]
         public void PrintMisses32Bit()
         {
             Random r = new Random();
