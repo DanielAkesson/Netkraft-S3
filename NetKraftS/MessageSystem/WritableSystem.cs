@@ -31,26 +31,29 @@ namespace Netkraft.WritableSystem
 
             //Add each writable type as it's own writable type!
             foreach (Type t in WritableTypes)
-                AddSuportedType(t, (s, o) => WriteObject(s, o), (s) => ReadObject(s, t));
+                AddSuportedType(t, (s, o) => WriteWritable(s, o), (s) => ReadWritable(s, t));
 
             //Special read and write for Objects
-            object WriteObject(Stream stream, object obj)
+            object WriteWritable(Stream stream, object obj)
             {
                 try
                 {
-                    //obj is a Writable or IMessage type
+                    //obj is a Writable type
                     if (MetaInformation.ContainsKey(obj.GetType()))
                     {
-                        List<FieldInfo> metaData = MetaInformation[obj.GetType()];
-                        foreach (FieldInfo fi in metaData)
+                        List<FieldInfo> metaDataField = MetaInformation[obj.GetType()].fields;
+                        foreach (FieldInfo fi in metaDataField)
                             BinaryFunctions[fi.FieldType].writer(stream, fi.GetValue(obj));
+                        List<PropertyInfo> metaDataProps = MetaInformation[obj.GetType()].properties;
+                        foreach (PropertyInfo pro in metaDataProps)
+                            BinaryFunctions[pro.PropertyType].writer(stream, pro.GetValue(obj));
                         return obj;
                     }
                 }
                 catch (Exception e) { Console.WriteLine(e.StackTrace); throw e; }
                 return obj;
             }
-            object ReadObject(Stream stream, Type writableType)
+            object ReadWritable(Stream stream, Type writableType)
             {
                 //TODO: These objects can be initialized on start and reused here!
                 object data = FormatterServices.GetUninitializedObject(writableType);
@@ -59,9 +62,12 @@ namespace Netkraft.WritableSystem
                     //obj is a Writable or IMessage type
                     if (MetaInformation.ContainsKey(writableType))
                     {
-                        List<FieldInfo> metaData = MetaInformation[writableType];
-                        foreach (FieldInfo fi in metaData)
+                        List<FieldInfo> metaDataField = MetaInformation[writableType].fields;
+                        foreach (FieldInfo fi in metaDataField)
                             fi.SetValue(data, BinaryFunctions[fi.FieldType].reader(stream));
+                        List<PropertyInfo> metaDataProps = MetaInformation[writableType].properties;
+                        foreach (PropertyInfo pro in metaDataProps)
+                            pro.SetValue(data, BinaryFunctions[pro.PropertyType].reader(stream));
                         return data;
                     }
                 }
@@ -198,7 +204,7 @@ namespace Netkraft.WritableSystem
         //Binary Reader-Writer
         private static readonly int _supportedArrayDimensionDepth = 4;
         private static Dictionary<Type, (Action<Stream, object> writer, Func<Stream, object> reader)> BinaryFunctions = new Dictionary<Type, (Action<Stream, object> writer, Func<Stream, object> reader)>();
-        private static Dictionary<Type, List<FieldInfo>> MetaInformation = new Dictionary<Type, List<FieldInfo>>();
+        private static Dictionary<Type, (List<FieldInfo> fields, List<PropertyInfo> properties)> MetaInformation = new Dictionary<Type, (List<FieldInfo> fields, List<PropertyInfo> properties)>();
         private static Dictionary<Type, ushort> _typeToHash = new Dictionary<Type, ushort>();
         private static Dictionary<ushort, Type> _hashToType = new Dictionary<ushort, Type>();
         //Public methods
@@ -213,6 +219,7 @@ namespace Netkraft.WritableSystem
             ushort hash = ReadRaw<ushort>(stream);
             return ReadRaw(stream, _hashToType[hash]);
         }
+
         public static object WriteRaw(Stream stream, object obj)
         {
             BinaryFunctions[obj.GetType()].writer(stream, obj);
@@ -226,6 +233,7 @@ namespace Netkraft.WritableSystem
         {
             return BinaryFunctions[writableType].reader(stream);
         }
+
         public static object WriteDelta(Stream stream, object obj, object key)
         {
             compressStream1.Seek(0, SeekOrigin.Begin);
@@ -287,6 +295,7 @@ namespace Netkraft.WritableSystem
         {
             if (MetaInformation.ContainsKey(writableType)) return;
             List<FieldInfo> fields = new List<FieldInfo>();
+            List<PropertyInfo> properties = new List<PropertyInfo>();
 
             // Collect fields from base types first so meta ordering is natural (base -> derived)
             Stack<Type> hierarchy = new Stack<Type>();
@@ -295,12 +304,14 @@ namespace Netkraft.WritableSystem
             while (hierarchy.Count > 0)
             {
                 Type t = hierarchy.Pop();
-                FieldInfo[] declared = t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
-                fields.AddRange(declared.Where(ValidateFieldInfo));
+                FieldInfo[] declaredFields = t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                fields.AddRange(declaredFields.Where(ValidateFieldInfo));
+                PropertyInfo[] declaredProperies = t.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                properties.AddRange(declaredProperies.Where(ValidatePropertyInfo));
             }
 
             fields.AddRange(writableType.GetFields().Where(x => ValidateFieldInfo(x) && x.DeclaringType == writableType).ToList());
-            MetaInformation.Add(writableType, fields);
+            MetaInformation.Add(writableType, (fields, properties));
         }
         private static void AddSuportedType(Type type, Action<Stream, object> writerFunction, Func<Stream, object> readerFunction)
         {
@@ -378,9 +389,15 @@ namespace Netkraft.WritableSystem
         }
         private static bool ValidateFieldInfo(FieldInfo info)
         {
-            SkipIndex attribute = info.GetCustomAttribute<SkipIndex>();
+            WritableField attribute = info.GetCustomAttribute<WritableField>();
             Type t = info.FieldType;
-            return attribute == null && !info.IsStatic && BinaryFunctions.ContainsKey(t);
+            return attribute != null && !info.IsStatic && BinaryFunctions.ContainsKey(t);
+        }
+        private static bool ValidatePropertyInfo(PropertyInfo info)
+        {
+            WritableField attribute = info.GetCustomAttribute<WritableField>();
+            Type t = info.PropertyType;
+            return attribute != null && BinaryFunctions.ContainsKey(t);
         }
     }
     public static class WritableHashSettings
@@ -403,15 +420,15 @@ namespace Netkraft.WritableSystem
     }
     //Attributes
     /// <summary>
-    /// If added above a field inside a <see cref="Writable"/> or <see cref="Message"/> Interface said field will not be included when sent by <see cref="NetkraftClient"/> or writen to byte array by <see cref="Writable"/>.
+    /// If added above a field or property inside a <see cref="IWritable"/> said field will be included when written to byte array by <see cref="IWritable"/>.
+    /// If compress is true this field will be delta compressible, if no it will always be sent raw
     /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
-    public class SkipIndex : Attribute { }
-    /// <summary>
-    /// This attributes describes where delta compression will start in a Message or Writable hat inherits from <see cref="IDeltaCompressed"/>.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = true)]
-    public class DeltaCompressedField : Attribute { }
+    public class WritableField : Attribute 
+    {
+        public bool Compress = true;
+        public WritableField(bool compress = true) { Compress = compress; }
+    }
     /// <summary>
     /// Assign a method to write an object of <see cref="Type"/> to a <see cref="Stream"/>. 
     /// <see cref="WriteFunction"/> can only be applied to methods that are public and take the parameters <see cref="Stream"/> and <see cref="object"/>. 

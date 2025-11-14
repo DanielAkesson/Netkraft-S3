@@ -10,6 +10,13 @@ namespace NetkraftTest
     public class WritableSystemTest
     {
         MemoryStream stream = new MemoryStream();
+
+        [TestMethod]
+        public void AAAInitializeWritable()
+        {
+            Writable.Write(stream, 1);
+            stream.Seek(0, SeekOrigin.Begin);
+        }
         //Basic types
         [TestMethod]
         public void Ints()
@@ -324,9 +331,13 @@ namespace NetkraftTest
         //Custom IWritable structs!
         private struct Construct : IWritable
         {
+            [WritableField]
             public string a;
+            [WritableField]
             public int b;
+            [WritableField]
             public Vector3 c;
+            [WritableField]
             public int[] d;
             public override bool Equals(object obj)
             {
@@ -361,10 +372,27 @@ namespace NetkraftTest
                 });
             stream.Seek(0, SeekOrigin.Begin);
         }
-
-        //Custom IWritable structs!
+        [TestMethod]
+        public void Struct1000Writes()
+        {
+            //strings
+            for(int i=0;i<1000;i++)
+            {
+                Writable.WriteRaw(stream,
+                new Construct
+                {
+                    a = "what's up",
+                    b = -1,
+                    c = new Vector3 { x = 0.0f, y = -1.0f, z = 1.0f, },
+                    d = new int[] { 0, 1, 2, 3 }
+                });
+            }
+            stream.Seek(0, SeekOrigin.Begin);
+        }
+        //Custom IWritable class!
         private class ConstructClass : IWritable
         {
+            [WritableField]
             public Vector3 a;
             public override bool Equals(object obj)
             {
@@ -393,6 +421,7 @@ namespace NetkraftTest
         //Hierarchy
         private class BaseClass: IWritable
         {
+            [WritableField]
             public int baseint;
             public override bool Equals(object obj)
             {
@@ -401,6 +430,7 @@ namespace NetkraftTest
         }
         private class ChildClass: BaseClass, IWritable
         {
+            [WritableField]
             public int childint;
             public override bool Equals(object obj)
             {
