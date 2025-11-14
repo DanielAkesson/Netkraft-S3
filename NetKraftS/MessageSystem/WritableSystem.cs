@@ -287,6 +287,18 @@ namespace Netkraft.WritableSystem
         {
             if (MetaInformation.ContainsKey(writableType)) return;
             List<FieldInfo> fields = new List<FieldInfo>();
+
+            // Collect fields from base types first so meta ordering is natural (base -> derived)
+            Stack<Type> hierarchy = new Stack<Type>();
+            for (Type t = writableType; t != null && t != typeof(object); t = t.BaseType)
+                hierarchy.Push(t);
+            while (hierarchy.Count > 0)
+            {
+                Type t = hierarchy.Pop();
+                FieldInfo[] declared = t.GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                fields.AddRange(declared.Where(ValidateFieldInfo));
+            }
+
             fields.AddRange(writableType.GetFields().Where(x => ValidateFieldInfo(x) && x.DeclaringType == writableType).ToList());
             MetaInformation.Add(writableType, fields);
         }

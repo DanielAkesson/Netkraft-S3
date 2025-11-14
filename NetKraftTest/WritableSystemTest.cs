@@ -389,5 +389,44 @@ namespace NetkraftTest
                 });
             stream.Seek(0, SeekOrigin.Begin);
         }
+
+        //Hierarchy
+        private class BaseClass: IWritable
+        {
+            public int baseint;
+            public override bool Equals(object obj)
+            {
+                return (obj is BaseClass) && ((BaseClass)obj).baseint.Equals(baseint);
+            }
+        }
+        private class ChildClass: BaseClass, IWritable
+        {
+            public int childint;
+            public override bool Equals(object obj)
+            {
+                return (obj is ChildClass) && ((ChildClass)obj).childint.Equals(childint) && ((ChildClass)obj).baseint.Equals(baseint);
+            }
+        }
+        [TestMethod]
+        public void Hierarchy()
+        {
+            //strings
+            Writable.WriteRaw(stream,
+                new ChildClass
+                {
+                    baseint = 1,
+                    childint = 2,
+                });
+
+            stream.Seek(0, SeekOrigin.Begin);
+            ChildClass value = Writable.ReadRaw<ChildClass>(stream);
+            Assert.AreEqual(value,
+                new ChildClass
+                {
+                    baseint = 1,
+                    childint = 2,
+                });
+            stream.Seek(0, SeekOrigin.Begin);
+        }
     }
 }

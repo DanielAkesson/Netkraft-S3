@@ -47,9 +47,11 @@ namespace NetkraftTest
         public void SimpleSendReliableChannel()
         {
             ChannelSocket client1 = new ChannelSocket(3000, 100, false);
-            client1.SuccessRate = 0.5f;
             ChannelSocket client2 = new ChannelSocket(3001, 100, false);
+#if DEBUG
+            client1.SuccessRate = 0.5f;
             client2.SuccessRate = 0.5f;
+#endif
             IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3001);
             byte[] buffer = new byte[1000];
             //Client 1
@@ -73,9 +75,11 @@ namespace NetkraftTest
         public void MultiSendAndAckedReliableChannel()
         {
             ChannelSocket client1 = new ChannelSocket(3002, 100, false);
-            client1.SuccessRate = 0.5f;
             ChannelSocket client2 = new ChannelSocket(3003, 100, false);
+#if DEBUG
+            client1.SuccessRate = 0.5f;
             client2.SuccessRate = 0.5f;
+#endif
             IPEndPoint client2Address = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 3003);
             byte[] buffer = new byte[4];
             Random r = new Random();

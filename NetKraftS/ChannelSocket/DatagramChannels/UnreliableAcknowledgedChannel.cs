@@ -33,7 +33,7 @@ namespace Netkraft.ChannelSocket
             if (r.NextDouble() < successRate)
                 sock.socket.SendTo(buffer, RemoteEP);
 #else
-            sock.socket.SendTo(payload, RemoteEP);
+            sock.socket.SendTo(buffer, RemoteEP);
 #endif
         }
         public override void Deliver(ref byte[] buffer, int size, IPEndPoint from)

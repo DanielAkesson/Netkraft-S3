@@ -65,7 +65,7 @@ namespace Netkraft.ChannelSocket
                     if (r.NextDouble() < successRate)
                         sock.socket.SendTo(receiveMask, from);
 #else
-                    sock.socket.SendTo(payload, from);
+                    sock.socket.SendTo(receiveMask, from);
 #endif
                     break;
 
