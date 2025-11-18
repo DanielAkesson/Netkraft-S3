@@ -120,7 +120,7 @@ namespace Netkraft.ChannelSocket
         }
         private void AcknowledgementCallback(IPEndPoint endpoint, byte id)
         {
-            connections[endpoint].aliveMessages[id].acknowledgeCallback();
+            connections[endpoint].aliveMessages[id].acknowledgeCallback?.Invoke();
         }
         private void WriteHeader(ref byte[] payload, byte id, byte additional)
         {
