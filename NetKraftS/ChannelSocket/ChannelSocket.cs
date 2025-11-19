@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Netkraft.ChannelSocket
@@ -21,7 +22,7 @@ namespace Netkraft.ChannelSocket
         private bool includeHeader;
         private readonly uint channelMask = 15;   //00001111
         private BlockingCollection<deliverdPackage> deliveredPackages = new BlockingCollection<deliverdPackage>();
-
+        private bool ReceiveLoopThreadRunning = true;
 #if DEBUG
         public float SuccessRate
         {
@@ -106,12 +107,29 @@ namespace Netkraft.ChannelSocket
         private void ReceiveLoop()
         {
             EndPoint _sender = new IPEndPoint(IPAddress.Any, 0);
-            while (true)
+            while (ReceiveLoopThreadRunning)
             {
-                int size = socket.ReceiveFrom(localBuffer, ref _sender);
-                byte channel = (byte)(localBuffer[0] & channelMask);
-                channels[channel].Deliver(ref localBuffer, size, (IPEndPoint)_sender);
+                try
+                {
+                    int size = socket.ReceiveFrom(localBuffer, ref _sender);
+                    byte channel = (byte)(localBuffer[0] & channelMask);
+                    channels[channel].Deliver(ref localBuffer, size, (IPEndPoint)_sender);
+                }
+                catch (SocketException)
+                {
+                    //Socket closed
+                    break;
+                }
             }
+        }
+
+        public void Close()
+        {
+            foreach(Channel c in channels)
+                c.Dispose();
+
+            ReceiveLoopThreadRunning = false;
+            socket.Close();
         }
 
         private struct deliverdPackage

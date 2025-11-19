@@ -15,7 +15,7 @@ namespace Netkraft.ChannelSocket
 
         //header and socket stuff
         private ChannelSocket sock;
-        private Timer sendTimer = new Timer();
+        private bool SendLoopThreadRunning = true;
         private readonly uint channelMask = 15;     //00001111
         private readonly uint additionalMask = 240; //11110000
         public ReliableChannel(ChannelSocket socket, int sendIntervalMS)
@@ -82,7 +82,10 @@ namespace Netkraft.ChannelSocket
                 return false;
             return connections.Remove(toBeRemoved);
         }
-
+        public override void Dispose()
+        {
+            SendLoopThreadRunning = false;
+        }
         //private stuff
         private bool AddEndpoint(IPEndPoint endPoint)
         {
@@ -131,25 +134,32 @@ namespace Netkraft.ChannelSocket
         private void SendLoop(int sendIntervalMS)
         {
             //TODO: can be optimized to only run when send has occurred without a ack being received
-            while(true)
+            while(SendLoopThreadRunning)
             {
-                Thread.Sleep(sendIntervalMS);
-                //Resend all messages that have not been acknowledged in the masked messages 
-                foreach (IPEndPoint peeps in connections.Keys)
+                try
                 {
-                    //push messages backed up in the waiting queue to the alive messages!
-                    PushWaitingQueue(peeps);
-                    //Resend all alive messages that have not been acknowledged
-                    for (int i = 0; i < 256; i++)
+                    Thread.Sleep(sendIntervalMS);
+                    //Resend all messages that have not been acknowledged in the masked messages 
+                    foreach (IPEndPoint peeps in connections.Keys)
                     {
+                        //push messages backed up in the waiting queue to the alive messages!
+                        PushWaitingQueue(peeps);
+                        //Resend all alive messages that have not been acknowledged
+                        for (int i = 0; i < 256; i++)
+                        {
 #if DEBUG
-                        if (connections[peeps].acknowledger.MessageisAlive(i) && (r.NextDouble() < successRate))
-                            sock.socket.SendTo(connections[peeps].aliveMessages[i].payload, peeps); //Push to socket
+                            if (connections[peeps].acknowledger.MessageisAlive(i) && (r.NextDouble() < successRate))
+                                sock.socket.SendTo(connections[peeps].aliveMessages[i].payload, peeps); //Push to socket
 #else
                             if (connections[peeps].acknowledger.MessageisAlive(i))
-                            sock.socket.SendTo(connections[peeps].aliveMessages[i].payload, peeps); //Push to socket
+                                sock.socket.SendTo(connections[peeps].aliveMessages[i].payload, peeps); //Push to socket
 #endif
+                        }
                     }
+                }
+                catch (Exception _)
+                {
+                    break;//Thread interrupted, likely due to disposal. Just exit the loop.
                 }
             }
         }

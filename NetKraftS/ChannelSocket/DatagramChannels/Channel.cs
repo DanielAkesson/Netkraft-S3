@@ -20,6 +20,7 @@ namespace Netkraft
         
         //Management functions
         public abstract bool RemoveEndpoint(IPEndPoint toBeRemoved);
+        public virtual void Dispose() { }
     }
     public enum ChannelId : byte
     {
