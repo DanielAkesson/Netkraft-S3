@@ -97,6 +97,7 @@ namespace Netkraft
             stream.Read(buffer, 0, 1);
             return buffer[0] > 0;
         }
+
         //Exponents
         [WriteFunction(typeof(float))]
         internal static void WriteSingle(Stream stream, object value)
@@ -120,6 +121,7 @@ namespace Netkraft
             stream.Read(buffer, 0, 8);
             return BitConverter.ToDouble(buffer, 0);
         }
+
         //Misc
         [WriteFunction(typeof(string))]
         internal static void WriteString(Stream stream, object value)
@@ -154,6 +156,18 @@ namespace Netkraft
         {
             stream.Read(buffer, 0, 1);
             return (char)buffer[0];
+        }
+
+        //NonTypeDefnied
+        [WriteFunction(typeof(object))]
+        internal static void WriteObject(Stream stream, object value)
+        {
+            Writable.Write(stream, value);
+        }
+        [ReadFunction(typeof(object))]
+        internal static object ReadObject(Stream stream)
+        {
+            return Writable.Read(stream);
         }
     }
 }

@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Netkraft.ChannelSocket
@@ -115,10 +114,16 @@ namespace Netkraft.ChannelSocket
                     byte channel = (byte)(localBuffer[0] & channelMask);
                     channels[channel].Deliver(ref localBuffer, size, (IPEndPoint)_sender);
                 }
-                catch (SocketException)
+                catch (SocketException socketException)
                 {
-                    //Socket closed
-                    break;
+                    SocketError code = socketException.SocketErrorCode;
+                    switch(code)
+                    {
+                        case SocketError.Interrupted:
+                        case SocketError.OperationAborted:
+                            //Socket closed
+                            return;
+                    }
                 }
             }
         }

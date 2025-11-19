@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.IO;
 using System.Linq;
 using Netkraft.WritableSystem;
+using System.Diagnostics;
 
 namespace NetkraftTest
 {
@@ -437,6 +438,15 @@ namespace NetkraftTest
                 return (obj is ChildClass) && ((ChildClass)obj).childint.Equals(childint) && ((ChildClass)obj).baseint.Equals(baseint);
             }
         }
+        private class IncludesAChildClass: IWritable
+        {
+            [WritableField]
+            public object childClass;
+            public override bool Equals(object obj)
+            {
+                return (obj is IncludesAChildClass) && ((IncludesAChildClass)obj).childClass.Equals(childClass);
+            }
+        }
         [TestMethod]
         public void Hierarchy()
         {
@@ -456,6 +466,83 @@ namespace NetkraftTest
                     baseint = 1,
                     childint = 2,
                 });
+            stream.Seek(0, SeekOrigin.Begin);
+        }
+        [TestMethod]
+        public void Hierarchy2()
+        {
+            //strings
+            Writable.Write(stream,
+                new ChildClass
+                {
+                    baseint = 1,
+                    childint = 2,
+                });
+
+            stream.Seek(0, SeekOrigin.Begin);
+            object value = Writable.Read(stream);
+            Assert.AreEqual(value,
+                new ChildClass
+                {
+                    baseint = 1,
+                    childint = 2,
+                });
+            stream.Seek(0, SeekOrigin.Begin);
+        }
+        [TestMethod]
+        public void Hierarchy3()
+        {
+            //strings
+            Writable.Write(stream,
+                new IncludesAChildClass
+                {
+                    childClass = new ChildClass { baseint = 1, childint = 2},
+                });
+
+            stream.Seek(0, SeekOrigin.Begin);
+            object value = Writable.Read(stream);
+            Assert.AreEqual(value,
+                new IncludesAChildClass
+                {
+                    childClass = new ChildClass { baseint = 1, childint = 2 }
+                });
+            stream.Seek(0, SeekOrigin.Begin);
+        }
+        private class IncludeAttribute : IWritable
+        {
+            [WritableField]
+            public byte Included1;
+            [WritableField]
+            public byte Included2;
+            public byte NotIncluded1;
+            public byte NotIncluded2;
+            [WritableField]
+            public byte Included3 
+            {
+                get { Debug.Assert(true, "This value should be get"); return 0; }
+                set { Debug.Assert(false, "This value should be set"); }
+            }
+            public byte NotIncluded3 
+            {
+                    get { Debug.Assert(false, "This value should never be get"); return 0; }
+                    set { Debug.Assert(false, "This value should never be set"); }
+            }
+        }
+        [TestMethod]
+        public void IncludeAttributeTest()
+        {
+            //strings
+            Writable.WriteRaw(stream,
+                new IncludeAttribute
+                {
+                    Included1 = 1,
+                    //notIncluded1 = 1,
+                });
+            Console.WriteLine("Stream length: " + stream.Length);
+            Debug.Assert(stream.Length <= 3, "included more data then expected");
+            Debug.Assert(stream.Length >= 3, "included less data then expected");
+            stream.Seek(0, SeekOrigin.Begin);
+            IncludeAttribute value = Writable.ReadRaw<IncludeAttribute>(stream);
             stream.Seek(0, SeekOrigin.Begin);
         }
     }

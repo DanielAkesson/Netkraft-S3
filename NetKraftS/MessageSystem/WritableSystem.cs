@@ -309,8 +309,6 @@ namespace Netkraft.WritableSystem
                 PropertyInfo[] declaredProperies = t.GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
                 properties.AddRange(declaredProperies.Where(ValidatePropertyInfo));
             }
-
-            fields.AddRange(writableType.GetFields().Where(x => ValidateFieldInfo(x) && x.DeclaringType == writableType).ToList());
             MetaInformation.Add(writableType, (fields, properties));
         }
         private static void AddSuportedType(Type type, Action<Stream, object> writerFunction, Func<Stream, object> readerFunction)
